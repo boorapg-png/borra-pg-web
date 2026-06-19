@@ -15,14 +15,36 @@ export default function EnquiryForm() {
     setStatus("loading");
 
     const form = e.currentTarget;
+    
+    // This safely vacuums up ALL inputs (Name, Email, Phone, Date, Message)
+    const formData = new FormData(form);
+    
+    // Add the Web3Forms required keys
+    formData.append("access_key", process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "");
+    formData.append("subject", "New Tenant Enquiry - Borra PG");
 
-    const formData = {
-      access_key: process.env.NEXT_PUBLIC_WEB3FORMS_KEY,
-      subject: "New Tenant Enquiry - Borra PG",
-      name: (form.elements.namedItem("name") as HTMLInputElement).value,
-      email: (form.elements.namedItem("email") as HTMLInputElement).value,
-      message: (form.elements.namedItem("message") as HTMLInputElement).value,
-    };
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        // Note: We deliberately leave out the "Content-Type" header here 
+        // so the browser can automatically format it correctly for FormData.
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setStatus("success");
+        form.reset(); 
+      } else {
+        console.error("Web3Forms API Error:", result);
+        setStatus("error");
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      setStatus("error");
+    }
+  };
 
     try {
       const response = await fetch("https://api.web3forms.com/submit", {
