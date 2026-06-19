@@ -1,0 +1,79 @@
+"use client";
+import { useState } from "react";
+import emailjs from '@emailjs/browser';
+
+// TODO: Replace with your EmailJS credentials
+const EMAILJS_SERVICE_ID = "YOUR_SERVICE_ID";
+const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";
+const EMAILJS_PUBLIC_KEY = "YOUR_PUBLIC_KEY";
+
+export default function EnquiryForm() {
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setStatus("loading");
+    
+    // Using formData to capture inputs quickly
+    const form = e.currentTarget;
+    
+    emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, form, EMAILJS_PUBLIC_KEY)
+      .then(() => {
+        setStatus("success");
+        form.reset();
+      }, (error) => {
+        console.error(error);
+        setStatus("error");
+      });
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+      {status === "success" ? (
+        <div className="text-center py-10">
+          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✓</div>
+          <h3 className="text-2xl font-bold text-navy mb-2">Thank you!</h3>
+          <p className="text-gray-600">We will contact you within 24 hours.</p>
+          <button onClick={() => setStatus("idle")} className="mt-6 text-gold underline">Send another enquiry</button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+              <input required name="from_name" type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-navy focus:border-transparent outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
+              <input required name="phone" type="tel" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-navy focus:border-transparent outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+              <input required name="email" type="email" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-navy focus:border-transparent outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Move-in Date</label>
+              <input name="move_in_date" type="date" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-navy focus:border-transparent outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Message (Optional)</label>
+            <textarea name="message" rows={4} className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-navy focus:border-transparent outline-none"></textarea>
+          </div>
+          
+          {status === "error" && <p className="text-red-500 text-sm">Failed to send. Please try calling us directly.</p>}
+          
+          <button 
+            type="submit" 
+            disabled={status === "loading"}
+            className="w-full bg-navy text-white font-bold py-4 rounded-lg hover:bg-opacity-90 transition disabled:opacity-70"
+          >
+            {status === "loading" ? "Sending..." : "Submit Enquiry"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
