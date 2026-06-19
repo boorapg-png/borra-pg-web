@@ -10,21 +10,42 @@ const EMAILJS_PUBLIC_KEY = "YOUR_PUBLIC_KEY";
 export default function EnquiryForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus("loading");
-    
-    // Using formData to capture inputs quickly
+
     const form = e.currentTarget;
-    
-    emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, form, EMAILJS_PUBLIC_KEY)
-      .then(() => {
-        setStatus("success");
-        form.reset();
-      }, (error) => {
-        console.error(error);
-        setStatus("error");
+
+    const formData = {
+      access_key: process.env.NEXT_PUBLIC_WEB3FORMS_KEY,
+      subject: "New Tenant Enquiry - Borra PG",
+      name: (form.elements.namedItem("name") as HTMLInputElement).value,
+      email: (form.elements.namedItem("email") as HTMLInputElement).value,
+      message: (form.elements.namedItem("message") as HTMLInputElement).value,
+    };
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(formData),
       });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setStatus("success");
+        form.reset(); 
+      } else {
+        setStatus("error");
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      setStatus("error");
+    }
   };
 
   return (
