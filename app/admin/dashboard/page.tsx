@@ -1,13 +1,28 @@
 "use client";
-import { useEffect } from "react";
-import { useAdmin } from "../../hooks/useAdmin";
+
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAdmin } from "../../../hooks/useAdmin";
 import { 
-  BedDouble, Users, DoorOpen, CalendarClock, LogOut,
-  IndianRupee, Wallet, AlertCircle, Activity
+  BedDouble, 
+  Users, 
+  DoorOpen, 
+  CalendarClock, 
+  LogOut,
+  IndianRupee, 
+  Wallet, 
+  AlertCircle, 
+  Activity
 } from "lucide-react";
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Legend
 } from "recharts";
 
 // --- MOCK DATA FOR UI VISUALIZATION ---
@@ -190,8 +205,16 @@ export default function AdminDashboard() {
   );
 }
 
-// Reusable mini-component for the KPI cards
-function KpiCard({ title, value, subtext, icon: Icon, color }: any) {
+// Reusable mini-component for the KPI cards with strict TypeScript types
+interface KpiCardProps {
+  title: string;
+  value: string;
+  subtext: string;
+  icon: React.ElementType;
+  color: string;
+}
+
+function KpiCard({ title, value, subtext, icon: Icon, color }: KpiCardProps) {
   return (
     <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-start justify-between">
       <div>
