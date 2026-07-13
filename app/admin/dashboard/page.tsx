@@ -53,18 +53,18 @@ const recentActivity = [
 ];
 
 export default function AdminDashboard() {
-  const { user, isAdmin, loading, adminLoading } = useAdmin();
+  const { user, isAdmin, loading } = useAdmin();
   const router = useRouter();
 
   // Protect the route: Redirect if not logged in or not an admin
   useEffect(() => {
-    if (!loading && !adminLoading && (!user || !isAdmin)) {
+    if (!loading && (!user || !isAdmin)) {
       router.push("/admin/login");
     }
-  }, [user, isAdmin, loading, adminLoading, router]);
+  }, [user, isAdmin, loading, router]);
 
   // Show a clean loading state while Firebase checks credentials
-  if (loading || adminLoading) {
+  if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="animate-pulse flex flex-col items-center">
