@@ -9,7 +9,7 @@ import {
   Phone, 
   ShieldCheck, 
   ChefHat, 
-  Broom, 
+  Brush, 
   Briefcase,
   Clock,
   IndianRupee
@@ -42,7 +42,7 @@ const getRoleIcon = (role: StaffRole) => {
   switch (role) {
     case "Manager": return <Briefcase size={20} className="text-blue-600" />;
     case "Cook": return <ChefHat size={20} className="text-orange-600" />;
-    case "Housekeeping": return <Broom size={20} className="text-teal-600" />;
+    case "Housekeeping": return <Brush size={20} className="text-teal-600" />;
     case "Security": return <ShieldCheck size={20} className="text-red-600" />;
     default: return <Briefcase size={20} className="text-gray-600" />;
   }
@@ -64,7 +64,7 @@ export default function StaffManagement() {
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
-        <div className="animate-pulse w-12 h-12 border-4 border-[#C9973A] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[#C9973A] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
