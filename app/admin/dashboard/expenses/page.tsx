@@ -4,18 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../../../hooks/useAdmin";
 import { 
-  IndianRupee, 
-  Receipt, 
-  ShoppingCart, 
-  Zap, 
-  Wrench, 
-  Users, 
-  FileText,
-  CheckCircle2,
-  TrendingDown
+  IndianRupee, Receipt, ShoppingCart, Zap, Wrench, Users, 
+  FileText, CheckCircle2, TrendingDown, Edit2, Trash2, X, Plus
 } from "lucide-react";
 
-// --- TYPES & INTERFACES ---
+// --- TYPES ---
 type ExpenseCategory = "Groceries" | "Utilities" | "Maintenance" | "Staff" | "Other";
 
 interface Expense {
@@ -24,181 +17,120 @@ interface Expense {
   description: string;
   category: ExpenseCategory;
   amount: number;
-  recordedBy: string;
 }
 
-// --- MOCK DATA ---
-const RECENT_EXPENSES: Expense[] = [
-  { id: "EXP_001", date: "14 Jul 2026", description: "Weekly Vegetables & Dairy", category: "Groceries", amount: 4500, recordedBy: "Admin" },
-  { id: "EXP_002", date: "13 Jul 2026", description: "Plumbing Repair - Block A", category: "Maintenance", amount: 1500, recordedBy: "Admin" },
-  { id: "EXP_003", date: "10 Jul 2026", description: "Electricity Bill (June)", category: "Utilities", amount: 12400, recordedBy: "Admin" },
-  { id: "EXP_004", date: "01 Jul 2026", description: "Cook Salary", category: "Staff", amount: 18000, recordedBy: "Admin" },
-  { id: "EXP_005", date: "28 Jun 2026", description: "Cleaning Supplies", category: "Other", amount: 850, recordedBy: "Admin" },
-];
-
 const CATEGORIES: ExpenseCategory[] = ["Groceries", "Utilities", "Maintenance", "Staff", "Other"];
-
-// Helper function for category icons
-const getCategoryIcon = (category: ExpenseCategory) => {
-  switch (category) {
-    case "Groceries": return <ShoppingCart size={16} className="text-orange-500" />;
-    case "Utilities": return <Zap size={16} className="text-yellow-500" />;
-    case "Maintenance": return <Wrench size={16} className="text-blue-500" />;
-    case "Staff": return <Users size={16} className="text-purple-500" />;
-    default: return <FileText size={16} className="text-gray-500" />;
-  }
-};
 
 export default function ExpensesManagement() {
   const { user, isAdmin, loading } = useAdmin();
   const router = useRouter();
 
-  const [category, setCategory] = useState<ExpenseCategory>("Groceries");
+  // --- STATE ---
+  const [expenses, setExpenses] = useState<Expense[]>([
+    { id: "EXP_001", date: "2026-07-14", description: "Weekly Vegetables & Dairy", category: "Groceries", amount: 4500 },
+    { id: "EXP_002", date: "2026-07-13", description: "Plumbing Repair - Block A", category: "Maintenance", amount: 1500 },
+  ]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
-  // Protect route
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
-      router.push("/admin/login");
-    }
+    if (!loading && (!user || !isAdmin)) router.push("/admin/login");
   }, [user, isAdmin, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="animate-pulse w-12 h-12 border-4 border-[#C9973A] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  // --- HANDLERS ---
+  const handleDelete = (id: string) => {
+    if (confirm("Delete this expense record?")) {
+      setExpenses(expenses.filter(e => e.id !== id));
+    }
+  };
 
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newExpense: Expense = {
+      id: editingExpense ? editingExpense.id : Math.random().toString(36).substr(2, 9),
+      description: formData.get("description") as string,
+      category: formData.get("category") as ExpenseCategory,
+      amount: parseFloat(formData.get("amount") as string),
+      date: formData.get("date") as string,
+    };
+
+    if (editingExpense) {
+      setExpenses(expenses.map(e => e.id === editingExpense.id ? newExpense : e));
+    } else {
+      setExpenses([...expenses, newExpense]);
+    }
+    setIsModalOpen(false);
+    setEditingExpense(null);
+  };
+
+  if (loading) return <div className="p-10 text-center">Loading...</div>;
   if (!user || !isAdmin) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 h-full flex flex-col">
       {/* Header */}
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex justify-between items-center bg-white p-5 rounded-xl shadow-sm border border-gray-100">
         <div>
           <h2 className="text-xl font-bold text-[#1A2744]">Expenses Tracking</h2>
-          <p className="text-sm text-gray-500">Log outgoing payments and monitor your operational costs</p>
         </div>
-        <div className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2 rounded-lg font-medium border border-red-100">
-          <TrendingDown size={18} />
-          Total this month: ₹36,400
-        </div>
+        <button 
+          onClick={() => { setEditingExpense(null); setIsModalOpen(true); }}
+          className="bg-[#1A2744] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A2744]/90 flex items-center gap-2"
+        >
+          <Plus size={18} /> Log New Expense
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Record Expense Form (1 column) */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-1 h-fit">
-          <div className="flex items-center gap-2 mb-6">
-            <Receipt className="text-[#1A2744]" size={20} />
-            <h3 className="font-bold text-[#1A2744]">Log New Expense</h3>
-          </div>
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 overflow-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-gray-500 bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="px-6 py-4 font-medium">Description</th>
+              <th className="px-6 py-4 font-medium">Category</th>
+              <th className="px-6 py-4 font-medium">Date</th>
+              <th className="px-6 py-4 font-medium text-right">Amount</th>
+              <th className="px-6 py-4 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {expenses.map((expense) => (
+              <tr key={expense.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 font-medium">{expense.description}</td>
+                <td className="px-6 py-4 text-gray-600">{expense.category}</td>
+                <td className="px-6 py-4 text-gray-600">{expense.date}</td>
+                <td className="px-6 py-4 text-right font-semibold text-red-600">₹{expense.amount.toLocaleString('en-IN')}</td>
+                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                  <button onClick={() => { setEditingExpense(expense); setIsModalOpen(true); }} className="text-gray-400 hover:text-[#C9973A]"><Edit2 size={16} /></button>
+                  <button onClick={() => handleDelete(expense.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-          <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
-            
-            {/* Amount */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <IndianRupee size={16} className="text-gray-400" />
-                </div>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9973A]/50 focus:border-[#C9973A]"
-                />
-              </div>
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">{editingExpense ? "Edit Expense" : "Log Expense"}</h3>
+              <button onClick={() => setIsModalOpen(false)}><X size={20} /></button>
             </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <input
-                type="text"
-                placeholder="e.g., Weekly vegetables"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9973A]/50 focus:border-[#C9973A]"
-              />
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-[#C9973A]/50 focus:border-[#C9973A] bg-white cursor-pointer"
-              >
-                {CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
+            <form onSubmit={handleSave} className="space-y-4">
+              <input name="description" defaultValue={editingExpense?.description} placeholder="Description" className="w-full p-2 border rounded" required />
+              <select name="category" defaultValue={editingExpense?.category} className="w-full p-2 border rounded" required>
+                {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
-            </div>
-
-            {/* Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-              <input
-                type="date"
-                defaultValue={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9973A]/50 focus:border-[#C9973A]"
-              />
-            </div>
-
-            <button
-              type="button"
-              className="w-full bg-[#1A2744] text-white py-3 rounded-lg text-sm font-medium hover:bg-[#1A2744]/90 transition-colors mt-2 flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 size={18} />
-              Save Expense
-            </button>
-          </form>
-        </div>
-
-        {/* Recent Expenses Table (2 columns) */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-[#1A2744]">Recent Expenses</h3>
-            <button className="text-sm font-medium text-[#C9973A] hover:underline">View Monthly Report</button>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-gray-500 border-b border-gray-100">
-                <tr>
-                  <th className="pb-3 font-medium">Description</th>
-                  <th className="pb-3 font-medium">Category</th>
-                  <th className="pb-3 font-medium">Date</th>
-                  <th className="pb-3 font-medium text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {RECENT_EXPENSES.map((expense) => (
-                  <tr key={expense.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                    <td className="py-4">
-                      <p className="font-semibold text-gray-900">{expense.description}</p>
-                    </td>
-                    <td className="py-4">
-                      <div className="flex items-center gap-2 px-2.5 py-1 bg-gray-50 rounded-md w-fit border border-gray-100">
-                        {getCategoryIcon(expense.category)}
-                        <span className="text-xs font-medium text-gray-700">{expense.category}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 text-gray-600">
-                      {expense.date}
-                    </td>
-                    <td className="py-4 text-right">
-                      <span className="font-semibold text-red-600">₹{expense.amount.toLocaleString('en-IN')}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              <input type="number" name="amount" defaultValue={editingExpense?.amount} placeholder="Amount (₹)" className="w-full p-2 border rounded" required />
+              <input type="date" name="date" defaultValue={editingExpense?.date} className="w-full p-2 border rounded" required />
+              <button type="submit" className="w-full bg-[#1A2744] text-white py-2 rounded-lg font-bold">Save Expense</button>
+            </form>
           </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }

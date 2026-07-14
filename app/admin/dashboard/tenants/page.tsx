@@ -4,227 +4,141 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../../../hooks/useAdmin";
 import { 
-  Search, 
-  Filter, 
-  UserPlus, 
-  MoreVertical, 
-  Phone,
-  Mail,
-  Eye,
-  FileText,
-  IndianRupee
+  Search, Filter, UserPlus, MoreVertical, Edit2, Trash2, X, Save,
+  Phone, Mail, MapPin, User, FileText, IndianRupee, Bed
 } from "lucide-react";
 
-// --- TYPES & INTERFACES ---
-type RentStatus = "Paid" | "Pending" | "Overdue";
-type TenantStatus = "Active" | "On Notice" | "Past";
-
-interface TenantData {
+// --- TYPES ---
+interface Tenant {
   id: string;
   name: string;
   phone: string;
-  email: string;
+  aadhaarNumber: string; // Placeholder for secure storage
+  occupation: string;
+  address: string;
   room: string;
-  building: string;
   moveInDate: string;
-  rentStatus: RentStatus;
-  status: TenantStatus;
-  balance: number;
+  status: "Active" | "On Notice" | "Past";
 }
-
-// --- MOCK DATA ---
-const MOCK_TENANTS: TenantData[] = [
-  { id: "t1", name: "Rahul Kumar", phone: "+91 98765 43210", email: "rahul.k@email.com", room: "101", building: "Block A", moveInDate: "01 Jan 2026", rentStatus: "Overdue", status: "Active", balance: 5500 },
-  { id: "t2", name: "Aman Singh", phone: "+91 98765 43211", email: "aman.s@email.com", room: "102", building: "Block A", moveInDate: "15 Feb 2026", rentStatus: "Paid", status: "Active", balance: 0 },
-  { id: "t3", name: "Vikram Gupta", phone: "+91 98765 43212", email: "vikram.g@email.com", room: "102", building: "Block A", moveInDate: "10 Mar 2026", rentStatus: "Pending", status: "Active", balance: 5000 },
-  { id: "t4", name: "Sandeep Verma", phone: "+91 98765 43213", email: "sandeep.v@email.com", room: "104", building: "Block A", moveInDate: "20 Aug 2025", rentStatus: "Paid", status: "On Notice", balance: 0 },
-  { id: "t5", name: "Amit Singh", phone: "+91 98765 43214", email: "amit.s@email.com", room: "205", building: "Block B", moveInDate: "05 May 2026", rentStatus: "Overdue", status: "Active", balance: 6200 },
-  { id: "t6", name: "Deepak Sharma", phone: "+91 98765 43215", email: "deepak.sh@email.com", room: "201", building: "Block A", moveInDate: "12 Apr 2026", rentStatus: "Paid", status: "Active", balance: 0 },
-];
 
 export default function TenantsManagement() {
   const { user, isAdmin, loading } = useAdmin();
   const router = useRouter();
 
-  // Search and Filter State
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All" | TenantStatus>("All");
+  // --- STATE ---
+  const [tenants, setTenants] = useState<Tenant[]>([
+    { id: "1", name: "Rahul Kumar", phone: "+91 98765 43210", aadhaarNumber: "XXXX-XXXX-XXXX", occupation: "Software Engineer", address: "Delhi, India", room: "101", moveInDate: "2026-01-01", status: "Active" },
+  ]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
 
-  // Protect route
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
-      router.push("/admin/login");
-    }
+    if (!loading && (!user || !isAdmin)) router.push("/admin/login");
   }, [user, isAdmin, loading, router]);
 
-  if (loading) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="animate-pulse w-12 h-12 border-4 border-[#C9973A] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  // --- HANDLERS ---
+  const handleDelete = (id: string) => {
+    if (confirm("Are you sure you want to delete this tenant? This action cannot be undone.")) {
+      setTenants(tenants.filter(t => t.id !== id));
+    }
+  };
 
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newTenant: Tenant = {
+      id: editingTenant ? editingTenant.id : Math.random().toString(36).substr(2, 9),
+      name: formData.get("name") as string,
+      phone: formData.get("phone") as string,
+      aadhaarNumber: formData.get("aadhaar") as string, // [Aadhaar Redacted] in practice
+      occupation: formData.get("occupation") as string,
+      address: formData.get("address") as string,
+      room: formData.get("room") as string,
+      moveInDate: formData.get("moveInDate") as string,
+      status: formData.get("status") as any,
+    };
+
+    if (editingTenant) {
+      setTenants(tenants.map(t => t.id === editingTenant.id ? newTenant : t));
+    } else {
+      setTenants([...tenants, newTenant]);
+    }
+    setIsModalOpen(false);
+    setEditingTenant(null);
+  };
+
+  if (loading) return <div className="p-10 text-center">Loading...</div>;
   if (!user || !isAdmin) return null;
-
-  // Filter Logic
-  const filteredTenants = MOCK_TENANTS.filter(tenant => {
-    const matchesSearch = 
-      tenant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tenant.room.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tenant.phone.includes(searchQuery);
-    
-    const matchesStatus = statusFilter === "All" || tenant.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      
-      {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl shadow-sm border border-gray-100 shrink-0">
+      <div className="flex justify-between items-center bg-white p-5 rounded-xl shadow-sm border border-gray-100">
         <div>
           <h2 className="text-xl font-bold text-[#1A2744]">Tenants Directory</h2>
-          <p className="text-sm text-gray-500">Manage all current and past residents</p>
         </div>
-        
-        <button className="flex items-center justify-center gap-2 bg-[#1A2744] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#1A2744]/90 transition-colors">
-          <UserPlus size={18} />
-          Add New Tenant
+        <button 
+          onClick={() => { setEditingTenant(null); setIsModalOpen(true); }}
+          className="bg-[#1A2744] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A2744]/90 flex items-center gap-2"
+        >
+          <UserPlus size={18} /> Add Tenant
         </button>
       </div>
 
-      {/* Toolbar: Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 shrink-0">
-        <div className="relative flex-1">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={18} className="text-gray-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search by name, room, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9973A]/50 focus:border-[#C9973A] transition-all shadow-sm"
-          />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Filter size={18} className="text-gray-400" />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "All" | TenantStatus)}
-              className="pl-10 pr-8 py-2.5 bg-white border border-gray-200 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-[#C9973A]/50 focus:border-[#C9973A] transition-all shadow-sm cursor-pointer"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="On Notice">On Notice</option>
-              <option value="Past">Past</option>
-            </select>
-          </div>
-        </div>
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 overflow-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-gray-500 bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="px-6 py-4 font-medium">Tenant</th>
+              <th className="px-6 py-4 font-medium">Room</th>
+              <th className="px-6 py-4 font-medium">Status</th>
+              <th className="px-6 py-4 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {tenants.map((tenant) => (
+              <tr key={tenant.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 font-medium">{tenant.name}</td>
+                <td className="px-6 py-4 text-gray-600">{tenant.room}</td>
+                <td className="px-6 py-4">
+                  <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">{tenant.status}</span>
+                </td>
+                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                  <button onClick={() => { setEditingTenant(tenant); setIsModalOpen(true); }} className="text-gray-400 hover:text-[#C9973A]"><Edit2 size={16} /></button>
+                  <button onClick={() => handleDelete(tenant.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Tenants Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 overflow-hidden flex flex-col">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="text-gray-500 bg-gray-50 border-b border-gray-100 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-4 font-medium">Tenant Info</th>
-                <th className="px-6 py-4 font-medium">Room</th>
-                <th className="px-6 py-4 font-medium">Move-in Date</th>
-                <th className="px-6 py-4 font-medium">Rent Status</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredTenants.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    No tenants found matching your search criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredTenants.map((tenant) => (
-                  <tr key={tenant.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#1A2744]/5 text-[#1A2744] flex items-center justify-center font-bold text-sm border border-gray-100">
-                          {tenant.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{tenant.name}</p>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <Phone size={12} /> {tenant.phone}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-semibold text-gray-900">{tenant.room}</p>
-                      <p className="text-xs text-gray-500">{tenant.building}</p>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {tenant.moveInDate}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          tenant.rentStatus === "Paid" ? "bg-green-50 text-green-700 border border-green-100" : 
-                          tenant.rentStatus === "Overdue" ? "bg-red-50 text-red-700 border border-red-100" : 
-                          "bg-yellow-50 text-yellow-700 border border-yellow-100"
-                        }`}>
-                          {tenant.rentStatus}
-                        </span>
-                        {tenant.balance > 0 && (
-                          <span className="text-xs font-semibold text-red-600">
-                            ₹{tenant.balance.toLocaleString('en-IN')} due
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                        tenant.status === "Active" ? "bg-blue-50 text-blue-700" : 
-                        tenant.status === "On Notice" ? "bg-orange-50 text-orange-700" : 
-                        "bg-gray-100 text-gray-700"
-                      }`}>
-                        {tenant.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1.5 text-gray-400 hover:text-[#C9973A] hover:bg-[#C9973A]/10 rounded-md transition-colors" title="View Profile">
-                          <Eye size={18} />
-                        </button>
-                        <button className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors" title="Record Payment">
-                          <IndianRupee size={18} />
-                        </button>
-                        <button className="p-1.5 text-gray-400 hover:text-[#1A2744] hover:bg-gray-100 rounded-md transition-colors" title="More Options">
-                          <MoreVertical size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* MODAL */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">{editingTenant ? "Edit Tenant" : "New Tenant"}</h3>
+              <button onClick={() => setIsModalOpen(false)}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSave} className="space-y-4">
+              <input name="name" defaultValue={editingTenant?.name} placeholder="Full Name" className="w-full p-2 border rounded" required />
+              <input name="phone" defaultValue={editingTenant?.phone} placeholder="Phone" className="w-full p-2 border rounded" required />
+              <input name="aadhaar" defaultValue={editingTenant?.aadhaarNumber} placeholder="Aadhaar Number (e.g., [Aadhaar Redacted])" className="w-full p-2 border rounded" required />
+              <input name="occupation" defaultValue={editingTenant?.occupation} placeholder="Occupation" className="w-full p-2 border rounded" />
+              <input name="address" defaultValue={editingTenant?.address} placeholder="Permanent Address" className="w-full p-2 border rounded" />
+              <input name="room" defaultValue={editingTenant?.room} placeholder="Allotted Room" className="w-full p-2 border rounded" />
+              <input type="date" name="moveInDate" defaultValue={editingTenant?.moveInDate} className="w-full p-2 border rounded" />
+              <select name="status" defaultValue={editingTenant?.status} className="w-full p-2 border rounded">
+                <option value="Active">Active</option>
+                <option value="On Notice">On Notice</option>
+                <option value="Past">Past</option>
+              </select>
+              <button type="submit" className="w-full bg-[#1A2744] text-white py-2 rounded-lg font-bold">Save Details</button>
+            </form>
+          </div>
         </div>
-        
-        {/* Simple Pagination Footer */}
-        <div className="p-4 border-t border-gray-100 bg-white flex items-center justify-between text-sm text-gray-500">
-          <p>Showing <span className="font-medium text-gray-900">{filteredTenants.length}</span> tenants</p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
