@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="bg-navy text-gray-300 py-12">
       <div className="container mx-auto px-4 max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
-          <h3 className="font-playfair text-2xl font-bold text-white mb-4">Borra PG</h3>
+          <h3 className="font-playfair text-2xl font-bold text-white mb-4">Boora PG</h3>
           <p className="mb-4">Premium paying guest accommodation near IT Park, Panchkula. Where comfort meets community.</p>
         </div>
         <div>
@@ -24,7 +24,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="container mx-auto px-4 max-w-6xl mt-8 pt-8 border-t border-gray-700 text-center text-sm">
-        <p>&copy; {new Date().getFullYear()} Borra PG. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Boora PG. All rights reserved.</p>
       </div>
     </footer>
   );

@@ -14,7 +14,7 @@ export default function EnquiryForm() {
     
     // 2. Add the required Web3Forms keys
     formData.append("access_key", process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "");
-    formData.append("subject", "New Tenant Enquiry - Borra PG");
+    formData.append("subject", "New Tenant Enquiry - Boora PG");
 
     // 3. Send it off
     try {

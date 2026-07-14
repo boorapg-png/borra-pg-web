@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
 
 export const metadata: Metadata = {
-  title: "Borra PG | Premium Living Near IT Park, Panchkula",
+  title: "Boora PG | Premium Living Near IT Park, Panchkula",
   description: "Premium paying guest accommodation for working professionals near IT Park, Chandigarh & Panchkula.",
 };
 

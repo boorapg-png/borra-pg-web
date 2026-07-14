@@ -57,7 +57,7 @@ export default function TenantLogin() {
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-100">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-playfair font-bold text-navy mb-2">Tenant Login</h1>
-          <p className="text-gray-500">Welcome back to Borra PG</p>
+          <p className="text-gray-500">Welcome back to Boora PG</p>
         </div>
 
         {error && <div className="bg-red-50 text-red-500 p-3 rounded mb-4 text-sm">{error}</div>}

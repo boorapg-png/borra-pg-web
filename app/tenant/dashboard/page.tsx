@@ -72,7 +72,7 @@ export default function TenantDashboard() {
     <div className="min-h-screen bg-softgrey flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden bg-navy text-white p-4 flex justify-between items-center">
-        <h1 className="font-playfair text-xl font-bold">Borra PG Portal</h1>
+        <h1 className="font-playfair text-xl font-bold">Boora PG Portal</h1>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
@@ -81,7 +81,7 @@ export default function TenantDashboard() {
       {/* Sidebar Navigation */}
       <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-white border-r border-gray-200 p-4 shrink-0`}>
         <div className="hidden md:block mb-8 px-4">
-          <h1 className="font-playfair text-2xl font-bold text-navy">Borra PG</h1>
+          <h1 className="font-playfair text-2xl font-bold text-navy">Boora PG</h1>
           <p className="text-xs text-gray-500">Tenant Portal</p>
         </div>
 

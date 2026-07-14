@@ -20,7 +20,7 @@ export default function GallerySection() {
             <div key={i} className="relative h-64 overflow-hidden rounded-lg group cursor-pointer">
               <Image 
                 src={src} 
-                alt={`Borra PG Gallery ${i + 1}`} 
+                alt={`Boora PG Gallery ${i + 1}`} 
                 fill 
                 className="object-cover transition duration-500 group-hover:scale-110"
               />
