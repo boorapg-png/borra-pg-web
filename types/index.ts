@@ -26,7 +26,8 @@ export interface Room {
   status: "available" | "occupied" | "maintenance" | "partial";
   bedsTotal: number;    
   pricePerBed: number;
-  ac: boolean; // <-- Fixes the line 342 error
+  ac: boolean;
+  attachedBath: boolean; // <-- Fixes the line 347 error
 }
 
 export interface Bed {
