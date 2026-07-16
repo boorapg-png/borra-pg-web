@@ -22,6 +22,7 @@ export interface Room {
   roomNumber: string;
   type: string; 
   capacity: number;
+  status: "available" | "occupied" | "maintenance" | "partial"; // <-- Added this line
 }
 
 export interface Bed {
