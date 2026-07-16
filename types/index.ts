@@ -122,3 +122,4 @@ export interface Expense {
   recordedBy: string;
   createdAt?: Timestamp;
 }
+export type PaymentRecord = Payment;
