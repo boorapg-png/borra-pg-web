@@ -25,7 +25,6 @@ export interface Room {
   buildingId: string;
   roomNumber: string; 
   number: string;     
-  // Locked to the strict literals your UI useState hook expects
   type: "Single" | "Double" | "Triple"; 
   capacity: number;
   status: "available" | "occupied" | "maintenance" | "partial";
@@ -51,8 +50,6 @@ export interface Bed {
 
 // ─── TENANT TYPES ───
 
-// ─── TENANT TYPES ───
-
 export interface Tenant {
   id: string;
   name: string;
@@ -62,6 +59,7 @@ export interface Tenant {
   gender: "Male" | "Female" | "Other";
   aadhaarNumber: string;
   emergencyContact: string; 
+  address?: string; // <--- Added this to support the dashboard
   status: "active" | "inactive" | "on_notice";
   joiningDate: Timestamp;
   leavingDate: Timestamp | null;
@@ -74,8 +72,8 @@ export interface Tenant {
     roomId: string;
     bedId: string;
     roomNumber: string;
-    bedLabel: string;     // <--- Fixes the current error
-    buildingName: string; // <--- Prevents the very next error!
+    bedLabel: string;     
+    buildingName: string; 
   };
   createdAt: Timestamp;
   updatedAt?: Timestamp;
@@ -123,4 +121,5 @@ export interface Expense {
   recordedBy: string;
   createdAt?: Timestamp;
 }
+
 export type PaymentRecord = Payment;

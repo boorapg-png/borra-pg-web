@@ -1,6 +1,6 @@
 // app/tenant/dashboard/page.tsx
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -8,6 +8,27 @@ import { auth, db } from "../../../lib/firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { User, Home, CreditCard, FileText, LifeBuoy, LogOut, Menu, X } from "lucide-react";
 import { Tenant, PaymentRecord } from "../../../types";
+
+// FIX: Moved NavItem OUTSIDE the main component and replaced 'any' with 'React.ElementType'
+const NavItem = ({ 
+  icon: Icon, 
+  label, 
+  isActive, 
+  onClick 
+}: { 
+  icon: React.ElementType; 
+  label: string; 
+  isActive: boolean; 
+  onClick: () => void; 
+}) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition ${isActive ? 'bg-navy text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+  >
+    <Icon size={20} />
+    <span className="font-medium">{label}</span>
+  </button>
+);
 
 export default function TenantDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -55,18 +76,13 @@ export default function TenantDashboard() {
     router.push("/tenant/login");
   };
 
+  const handleNavClick = (tabId: string) => {
+    setActiveTab(tabId);
+    setIsMobileMenuOpen(false);
+  };
+
   if (authLoading || dataLoading) return <div className="min-h-screen flex items-center justify-center bg-softgrey"><div className="text-xl font-bold text-navy animate-pulse">Loading Portal...</div></div>;
   if (!user) return null;
-
-  const NavItem = ({ id, icon: Icon, label }: { id: string, icon: any, label: string }) => (
-    <button 
-      onClick={() => { setActiveTab(id); setIsMobileMenuOpen(false); }}
-      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition ${activeTab === id ? 'bg-navy text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-    >
-      <Icon size={20} />
-      <span className="font-medium">{label}</span>
-    </button>
-  );
 
   return (
     <div className="min-h-screen bg-softgrey flex flex-col md:flex-row">
@@ -86,11 +102,12 @@ export default function TenantDashboard() {
         </div>
 
         <nav className="space-y-2">
-          <NavItem id="profile" icon={User} label="My Profile" />
-          <NavItem id="room" icon={Home} label="My Room" />
-          <NavItem id="payments" icon={CreditCard} label="Payment History" />
-          <NavItem id="documents" icon={FileText} label="My Documents" />
-          <NavItem id="support" icon={LifeBuoy} label="Support" />
+          {/* FIX: Updated NavItem props to match the new strict structure */}
+          <NavItem icon={User} label="My Profile" isActive={activeTab === "profile"} onClick={() => handleNavClick("profile")} />
+          <NavItem icon={Home} label="My Room" isActive={activeTab === "room"} onClick={() => handleNavClick("room")} />
+          <NavItem icon={CreditCard} label="Payment History" isActive={activeTab === "payments"} onClick={() => handleNavClick("payments")} />
+          <NavItem icon={FileText} label="My Documents" isActive={activeTab === "documents"} onClick={() => handleNavClick("documents")} />
+          <NavItem icon={LifeBuoy} label="Support" isActive={activeTab === "support"} onClick={() => handleNavClick("support")} />
         </nav>
 
         <div className="mt-12 pt-4 border-t border-gray-200">
@@ -111,13 +128,13 @@ export default function TenantDashboard() {
               <h2 className="text-2xl font-bold text-navy mb-6 border-b pb-4">My Profile</h2>
               {tenantData ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div><p className="text-sm text-gray-500">Full Name</p><p className="font-medium">{tenantData.personalInfo.name}</p></div>
-                  <div><p className="text-sm text-gray-500">Phone</p><p className="font-medium">{tenantData.personalInfo.phone}</p></div>
-                  <div><p className="text-sm text-gray-500">Email</p><p className="font-medium">{tenantData.personalInfo.email}</p></div>
-                  <div><p className="text-sm text-gray-500">Date of Birth</p><p className="font-medium">{tenantData.personalInfo.dob}</p></div>
-                  <div><p className="text-sm text-gray-500">Aadhaar Number</p><p className="font-medium">XXXX-XXXX-{tenantData.personalInfo.aadhaar.slice(-4)}</p></div>
-                  <div><p className="text-sm text-gray-500">Emergency Contact</p><p className="font-medium text-red-600">{tenantData.personalInfo.emergencyContact}</p></div>
-                  <div className="md:col-span-2"><p className="text-sm text-gray-500">Home Address</p><p className="font-medium">{tenantData.personalInfo.homeAddress}</p></div>
+                  <div><p className="text-sm text-gray-500">Full Name</p><p className="font-medium">{tenantData.name}</p></div>
+                  <div><p className="text-sm text-gray-500">Phone</p><p className="font-medium">{tenantData.phone}</p></div>
+                  <div><p className="text-sm text-gray-500">Email</p><p className="font-medium">{tenantData.email || "Not provided"}</p></div>
+                  <div><p className="text-sm text-gray-500">Date of Birth</p><p className="font-medium">{tenantData.dob}</p></div>
+                  <div><p className="text-sm text-gray-500">Aadhaar Number</p><p className="font-medium">XXXX-XXXX-{tenantData.aadhaarNumber.slice(-4)}</p></div>
+                  <div><p className="text-sm text-gray-500">Emergency Contact</p><p className="font-medium text-red-600">{tenantData.emergencyContact}</p></div>
+                  <div className="md:col-span-2"><p className="text-sm text-gray-500">Home Address</p><p className="font-medium">{tenantData.address || "Not provided"}</p></div>
                 </div>
               ) : (
                  <p className="text-gray-500">No profile data found. Please contact admin.</p>
@@ -128,19 +145,17 @@ export default function TenantDashboard() {
           {/* ROOM TAB */}
           {activeTab === "room" && (
             <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-100">
-              <h2 className="text-2xl font-bold text-navy mb-6 border-b pb-4">My Room Details</h2>
+              <h2 className="text-2xl font-bold text-navy mb-6 border-b pb-4">My Accommodation</h2>
               {tenantData ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div><p className="text-sm text-gray-500">Room Number</p><p className="text-2xl font-bold text-gold">{tenantData.roomInfo.roomNumber}</p></div>
-                  <div><p className="text-sm text-gray-500">Floor</p><p className="font-medium">{tenantData.roomInfo.floor}</p></div>
-                  <div><p className="text-sm text-gray-500">Room Type</p><p className="font-medium">{tenantData.roomInfo.type}</p></div>
-                  <div><p className="text-sm text-gray-500">AC / Non-AC</p><p className="font-medium">{tenantData.roomInfo.ac ? "AC Room" : "Non-AC Room"}</p></div>
-                  <div><p className="text-sm text-gray-500">Monthly Rent</p><p className="font-medium">₹{tenantData.roomInfo.rentAmount}</p></div>
-                  <div><p className="text-sm text-gray-500">Security Deposit</p><p className="font-medium">₹{tenantData.roomInfo.securityDeposit}</p></div>
-                  <div><p className="text-sm text-gray-500">Move-in Date</p><p className="font-medium">{tenantData.roomInfo.moveInDate}</p></div>
+                  <div><p className="text-sm text-gray-500">Building</p><p className="text-lg font-bold text-navy">{tenantData.accommodation.buildingName}</p></div>
+                  <div><p className="text-sm text-gray-500">Room Number</p><p className="text-2xl font-bold text-gold">{tenantData.accommodation.roomNumber}</p></div>
+                  <div><p className="text-sm text-gray-500">Bed Assigned</p><p className="font-medium">{tenantData.accommodation.bedLabel}</p></div>
+                  <div><p className="text-sm text-gray-500">Move-in Date</p><p className="font-medium">{tenantData.joiningDate ? tenantData.joiningDate.toDate().toLocaleDateString("en-IN") : "N/A"}</p></div>
+                  <div><p className="text-sm text-gray-500">Current Status</p><p className="font-medium capitalize">{tenantData.status}</p></div>
                 </div>
               ) : (
-                <p className="text-gray-500">No room data found.</p>
+                <p className="text-gray-500">No accommodation data found.</p>
               )}
             </div>
           )}
