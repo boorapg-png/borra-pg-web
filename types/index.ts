@@ -59,7 +59,7 @@ export interface Tenant {
   gender: "Male" | "Female" | "Other";
   aadhaarNumber: string;
   emergencyContact: string; 
-  address?: string; // <--- Added this to support the dashboard
+  address?: string; 
   status: "active" | "inactive" | "on_notice";
   joiningDate: Timestamp;
   leavingDate: Timestamp | null;
@@ -128,9 +128,9 @@ export type PaymentRecord = Payment;
 
 export interface GlobalSettings {
   electricityRatePerUnit: number;
-  rateHistory?: any[];         // <--- Added to fix line 9
-  gracePeriodDays?: number;    // <--- Added to fix line 11
-  lateFeeEnabled?: boolean;    // <--- Added to fix line 12
+  rateHistory?: unknown[];     
+  gracePeriodDays?: number;    
+  lateFeeEnabled?: boolean;    
   waterCharge?: number;
   maintenanceFee?: number;
   lateFeeAmount?: number;
@@ -138,4 +138,23 @@ export interface GlobalSettings {
   lockInPeriodMonths?: number;
   updatedBy?: string;
   updatedAt?: Timestamp;
+}
+
+// ─── UTILITIES & ELECTRICITY TYPES ───
+
+export interface ElectricityReading {
+  id: string;
+  roomId: string;
+  roomNumber: string;
+  meterNumber?: string;
+  previousReading: number;
+  currentReading: number;
+  unitsConsumed: number;
+  ratePerUnit: number;
+  totalAmount: number;
+  readingDate: Timestamp;
+  month: string; 
+  isBilled: boolean;
+  recordedBy: string;
+  createdAt?: Timestamp;
 }
