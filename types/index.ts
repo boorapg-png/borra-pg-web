@@ -7,12 +7,16 @@ export interface Building {
   name: string;
   address?: string;
   totalFloors?: number;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface Floor {
   id: string;
   buildingId: string;
   name: string; 
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface Room {
@@ -21,7 +25,8 @@ export interface Room {
   buildingId: string;
   roomNumber: string; 
   number: string;     
-  type: string; 
+  // Locked to the strict literals your UI useState hook expects
+  type: "Single" | "Double" | "Triple"; 
   capacity: number;
   status: "available" | "occupied" | "maintenance" | "partial";
   bedsTotal: number;    
@@ -29,6 +34,8 @@ export interface Room {
   ac: boolean;
   attachedBath: boolean;
   meterNumber?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface Bed {
@@ -36,8 +43,10 @@ export interface Bed {
   roomId: string;
   status: "available" | "occupied" | "maintenance";
   tenantId?: string | null;
-  currentTenantId?: string | null; // <--- Fixes your build error
+  currentTenantId?: string | null; 
   bedLabel: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 // ─── TENANT TYPES ───
@@ -64,6 +73,7 @@ export interface Tenant {
     roomNumber: string;
   };
   createdAt: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 // ─── FINANCIAL TYPES ───
@@ -79,6 +89,8 @@ export interface Bill {
   balance: number;
   status: "paid" | "partial" | "pending";
   dueDate: Timestamp;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface Payment {
@@ -94,6 +106,7 @@ export interface Payment {
   notes?: string;
   recordedBy: string;
   receiptNumber?: string;
+  createdAt?: Timestamp;
 }
 
 export interface Expense {
@@ -103,4 +116,5 @@ export interface Expense {
   description: string;
   date: Timestamp;
   recordedBy: string;
+  createdAt?: Timestamp;
 }
