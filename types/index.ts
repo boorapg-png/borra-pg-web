@@ -36,7 +36,8 @@ export interface Bed {
   roomId: string;
   status: "available" | "occupied" | "maintenance";
   tenantId?: string | null;
-  bedLabel: string; // <--- The property your UI is using for sorting
+  currentTenantId?: string | null; // <--- Fixes your build error
+  bedLabel: string;
 }
 
 // ─── TENANT TYPES ───
