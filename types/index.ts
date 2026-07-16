@@ -25,7 +25,8 @@ export interface Room {
   capacity: number;
   status: "available" | "occupied" | "maintenance" | "partial";
   bedsTotal: number;    
-  pricePerBed: number;  
+  pricePerBed: number;
+  ac: boolean; // <-- Fixes the line 342 error
 }
 
 export interface Bed {
