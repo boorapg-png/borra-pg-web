@@ -19,10 +19,11 @@ export interface Room {
   id: string;
   floorId: string;
   buildingId: string;
-  roomNumber: string;
+  roomNumber: string; // Used by your database
+  number: string;     // Explicitly added for the UI (fixes line 329 error)
   type: string; 
   capacity: number;
-  status: "available" | "occupied" | "maintenance" | "partial"; // <-- Added this line
+  status: "available" | "occupied" | "maintenance" | "partial"; // Explicitly added for the UI (fixes line 143 error)
 }
 
 export interface Bed {
