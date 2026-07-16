@@ -164,3 +164,19 @@ export interface ElectricityReading {
   }[];
   createdAt?: Timestamp;
 }
+
+// ─── STAFF TYPES ───
+
+export interface Staff {
+  id: string;
+  name: string;
+  role: "Manager" | "Cook" | "Cleaner" | "Security" | "Maintenance" | "Other";
+  phone: string;
+  salary: number;
+  joiningDate: Timestamp;
+  status: "active" | "inactive";
+  shift?: string;
+  notes?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
