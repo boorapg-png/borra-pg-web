@@ -28,7 +28,7 @@ export interface Room {
   pricePerBed: number;
   ac: boolean;
   attachedBath: boolean;
-  meterNumber?: string; // <-- Fixes the line 352 error
+  meterNumber?: string;
 }
 
 export interface Bed {
@@ -36,6 +36,7 @@ export interface Bed {
   roomId: string;
   status: "available" | "occupied" | "maintenance";
   tenantId?: string | null;
+  bedLabel: string; // <--- The property your UI is using for sorting
 }
 
 // ─── TENANT TYPES ───
@@ -64,7 +65,7 @@ export interface Tenant {
   createdAt: Timestamp;
 }
 
-// ─── FINANCIAL TYPES (BILLS, PAYMENTS, EXPENSES) ───
+// ─── FINANCIAL TYPES ───
 
 export interface Bill {
   id: string;
