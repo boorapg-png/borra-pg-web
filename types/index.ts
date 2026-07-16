@@ -51,6 +51,8 @@ export interface Bed {
 
 // ─── TENANT TYPES ───
 
+// ─── TENANT TYPES ───
+
 export interface Tenant {
   id: string;
   name: string;
@@ -71,6 +73,8 @@ export interface Tenant {
     roomId: string;
     bedId: string;
     roomNumber: string;
+    bedLabel: string;     // <--- Fixes the current error
+    buildingName: string; // <--- Prevents the very next error!
   };
   createdAt: Timestamp;
   updatedAt?: Timestamp;
