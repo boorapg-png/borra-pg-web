@@ -28,3 +28,9 @@ export interface Expense {
   date: Timestamp;
   recordedBy: string;
 }
+export interface Building {
+  id: string;
+  name: string;
+  address?: string;
+  totalFloors?: number;
+}
