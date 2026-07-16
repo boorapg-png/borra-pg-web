@@ -123,3 +123,16 @@ export interface Expense {
 }
 
 export type PaymentRecord = Payment;
+
+// ─── SYSTEM SETTINGS TYPES ───
+
+export interface GlobalSettings {
+  electricityRatePerUnit: number;
+  waterCharge?: number;
+  maintenanceFee?: number;
+  lateFeeAmount?: number;
+  noticePeriodDays?: number;
+  lockInPeriodMonths?: number;
+  updatedBy?: string;
+  updatedAt?: Timestamp;
+}
