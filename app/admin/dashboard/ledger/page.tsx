@@ -127,7 +127,7 @@ function LedgerModal({ tenant, onClose }: { tenant: Tenant, onClose: () => void 
           month: month,
           amount,
           paymentDate: Timestamp.fromDate(date),
-          paymentMode: mode as any,
+          paymentMode: mode as "cash" | "upi" | "bank_transfer",
           notes: "Manual ledger entry",
           recordedBy: "Admin"
       });
@@ -146,7 +146,7 @@ function LedgerModal({ tenant, onClose }: { tenant: Tenant, onClose: () => void 
         {/* Modal Header */}
         <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center rounded-t-2xl shrink-0">
           <div>
-            <h2 className="font-bold text-lg text-navy">{tenant.name}'s Ledger</h2>
+            <h2 className="font-bold text-lg text-navy">{tenant.name}&apos;s Ledger</h2>
             <p className="text-sm text-gray-500">Room {tenant.accommodation.roomNumber}</p>
           </div>
           <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-gray-700"/></button>
