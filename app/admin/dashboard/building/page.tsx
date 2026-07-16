@@ -26,10 +26,14 @@ type ModalState =
   | { type: "view-room"; room: Room }
   | null;
 
+// FIX: Added roomNumber, capacity, and bedsTotal to perfectly match the service!
 export interface RoomPayload {
   buildingId: string;
   floorId: string;
   number: string;
+  roomNumber: string;
+  capacity: number;
+  bedsTotal: number;
   meterNumber: string;
   type: "Single" | "Double" | "Triple";
   pricePerBed: number;
@@ -646,10 +650,25 @@ function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel
   const priceNum = parseFloat(pricePerBed) || 0;
   const isComplete = number.trim() !== "" && priceNum > 0;
 
+  // FIX: Form correctly compiles roomNumber, capacity, and bedsTotal automatically!
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isComplete) {
-      onSave({ buildingId, floorId, number: number.trim(), meterNumber: meterNumber.trim(), type, pricePerBed: priceNum, status, ac, attachedBath });
+      const beds = bedCount(type);
+      onSave({ 
+        buildingId, 
+        floorId, 
+        number: number.trim(), 
+        roomNumber: number.trim(), // Assuming roomNumber equals number
+        capacity: beds,
+        bedsTotal: beds,
+        meterNumber: meterNumber.trim(), 
+        type, 
+        pricePerBed: priceNum, 
+        status, 
+        ac, 
+        attachedBath 
+      });
     }
   };
 
