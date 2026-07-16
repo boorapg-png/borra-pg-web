@@ -156,5 +156,11 @@ export interface ElectricityReading {
   month: string; 
   isBilled: boolean;
   recordedBy: string;
+  // <--- Added tenantSplits to fix the build error!
+  tenantSplits?: {
+    tenantId: string;
+    amount: number;
+    tenantName?: string;
+  }[];
   createdAt?: Timestamp;
 }
