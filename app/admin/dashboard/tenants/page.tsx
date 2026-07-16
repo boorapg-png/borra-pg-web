@@ -3,14 +3,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { 
   Users, Plus, Search, Edit2, Trash2, X, ChevronDown, ChevronUp, 
-  CheckCircle2, AlertCircle, Clock, Loader2, Home
+  CheckCircle2, AlertCircle, Loader2, Home
 } from "lucide-react";
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useTenants } from "@/hooks/useTenants";
 import { useBuildings, useRooms } from "@/hooks/useBuildings";
 import { tenantService } from "@/services/tenants.service";
-import { Tenant, Building, Room, Bed } from "@/types";
+import { Tenant, Bed } from "@/types";
 
 // ─── HELPER FUNCTIONS ───
 const calculateAge = (dobString: string) => {
@@ -63,18 +63,21 @@ export default function TenantManagement() {
 
     // Sort
     result.sort((a, b) => {
-      let aValue: any = a[sortField as keyof Tenant];
-      let bValue: any = b[sortField as keyof Tenant];
+      let aValue: string | number = "";
+      let bValue: string | number = "";
 
       if (sortField === "age") {
-        aValue = calculateAge(a.dob);
-        bValue = calculateAge(b.dob);
+        aValue = calculateAge(a.dob) as number;
+        bValue = calculateAge(b.dob) as number;
       } else if (sortField === "room") {
         aValue = a.accommodation.roomNumber;
         bValue = b.accommodation.roomNumber;
-      } else if (aValue instanceof Timestamp && bValue instanceof Timestamp) {
-        aValue = aValue.toMillis();
-        bValue = bValue.toMillis();
+      } else if (a[sortField as keyof Tenant] instanceof Timestamp) {
+        aValue = (a[sortField as keyof Tenant] as unknown as Timestamp).toMillis();
+        bValue = (b[sortField as keyof Tenant] as unknown as Timestamp).toMillis();
+      } else {
+        aValue = String(a[sortField as keyof Tenant]);
+        bValue = String(b[sortField as keyof Tenant]);
       }
 
       if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
@@ -95,7 +98,7 @@ export default function TenantManagement() {
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <div className="w-4 h-4" />; // spacer
+    if (sortField !== field) return <div className="w-4 h-4" />; 
     return sortDirection === "asc" ? <ChevronUp size={16} /> : <ChevronDown size={16} />;
   };
 
@@ -357,12 +360,12 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         dob: formData.dob,
-        gender: formData.gender as any,
+        gender: formData.gender as "Male" | "Female" | "Other",
         aadhaarNumber: formData.aadhaarNumber.trim(),
         emergencyContact: formData.emergencyContact.trim(),
-        status: formData.status as any,
-        documentStatus: formData.documentStatus as any,
-        paymentStatus: formData.paymentStatus as any,
+        status: formData.status as "active" | "inactive" | "on_notice",
+        documentStatus: formData.documentStatus as "completed" | "pending",
+        paymentStatus: formData.paymentStatus as "paid" | "pending" | "overdue",
         joiningDate: Timestamp.fromDate(new Date(formData.joiningDate)),
         leavingDate: formData.leavingDate ? Timestamp.fromDate(new Date(formData.leavingDate)) : null,
         accommodation: {
@@ -377,8 +380,6 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
       };
 
       if (initialData) {
-        // NOTE: A true "Room Change" for an existing tenant requires freeing up the old bed. 
-        // For simplicity in this UI, we just update the tenant doc. (Advanced room transfers require a custom service function).
         await tenantService.update(initialData.id, tenantPayload);
       } else {
         await tenantService.add(tenantPayload);

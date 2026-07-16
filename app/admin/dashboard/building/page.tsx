@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Building2, Layers, Bed, Plus, Edit2, Trash2, X,
-  ChevronDown, ChevronRight, Zap, Wind, Bath, Loader2, User, Phone, CheckCircle2
+  ChevronDown, ChevronRight, Zap, Wind, Bath, Loader2, Phone
 } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -25,6 +25,18 @@ type ModalState =
   | { type: "edit-room"; room: Room }
   | { type: "view-room"; room: Room }
   | null;
+
+export interface RoomPayload {
+  buildingId: string;
+  floorId: string;
+  number: string;
+  meterNumber: string;
+  type: "Single" | "Double" | "Triple";
+  pricePerBed: number;
+  status: Room["status"];
+  ac: boolean;
+  attachedBath: boolean;
+}
 
 const INR = (n: number) => "₹" + n.toLocaleString("en-IN");
 const bedCount = (type: "Single" | "Double" | "Triple") => type === "Single" ? 1 : type === "Double" ? 2 : 3;
@@ -105,7 +117,7 @@ export default function BuildingManagement() {
     }
   };
 
-  const saveRoom = async (data: any, id?: string) => {
+  const saveRoom = async (data: RoomPayload, id?: string) => {
     setIsSaving(true);
     try {
       if (id) await roomService.update(id, data);
@@ -318,7 +330,6 @@ export default function BuildingManagement() {
                                 {floorRooms.map((room) => {
                                   const isRoomConfirmingDelete = confirmDelete === `room-${room.id}`;
                                   return (
-                                    // Clicking the card opens the new "View Room" modal
                                     <div 
                                       key={room.id} 
                                       onClick={() => setModal({ type: "view-room", room })}
@@ -356,7 +367,6 @@ export default function BuildingManagement() {
                                           )}
                                         </div>
                                       </div>
-                                      {/* Stop propagation so edit/delete don't trigger the view modal */}
                                       <div className="border-t border-gray-100 flex p-2 gap-2 bg-gray-50/50 rounded-b-lg" onClick={(e) => e.stopPropagation()}>
                                         <button
                                           onClick={() => setModal({ type: "edit-room", room })}
@@ -472,7 +482,7 @@ export default function BuildingManagement() {
   );
 }
 
-// ─── ROOM DETAILS VIEW (NEW) ───
+// ─── ROOM DETAILS VIEW ───
 function RoomDetailsView({ room }: { room: Room }) {
   const [beds, setBeds] = useState<BedType[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -481,15 +491,12 @@ function RoomDetailsView({ room }: { room: Room }) {
   useEffect(() => {
     const fetchRoomDetails = async () => {
       try {
-        // 1. Fetch all beds for this specific room
         const bedsSnap = await getDocs(query(collection(db, "beds"), where("roomId", "==", room.id)));
         const fetchedBeds = bedsSnap.docs.map(d => d.data() as BedType).sort((a,b) => a.bedLabel.localeCompare(b.bedLabel));
         setBeds(fetchedBeds);
 
-        // 2. Find which tenants are currently assigned to these beds
         const activeTenantIds = fetchedBeds.filter(b => b.currentTenantId).map(b => b.currentTenantId as string);
         
-        // 3. Fetch the tenant profiles (using an 'in' query)
         if (activeTenantIds.length > 0) {
           const tenantsSnap = await getDocs(query(collection(db, "tenants"), where("id", "in", activeTenantIds)));
           setTenants(tenantsSnap.docs.map(d => d.data() as Tenant));
@@ -573,7 +580,7 @@ function RoomDetailsView({ room }: { room: Room }) {
             );
           }
           
-          return null; // Fallback in case of data mismatch
+          return null;
         })}
       </div>
     </div>
@@ -627,7 +634,7 @@ function FloorForm({ initialData, isSaving, onSave, onCancel }: { initialData?: 
 }
 
 // ─── ROOM FORM ───
-function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel }: { initialData?: Room, buildingId: string, floorId: string, isSaving: boolean, onSave: (data: any) => void, onCancel: () => void }) {
+function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel }: { initialData?: Room, buildingId: string, floorId: string, isSaving: boolean, onSave: (data: RoomPayload) => void, onCancel: () => void }) {
   const [number, setNumber] = useState(initialData?.number || "");
   const [meterNumber, setMeterNumber] = useState(initialData?.meterNumber || "");
   const [type, setType] = useState<"Single" | "Double" | "Triple">(initialData?.type || "Single");

@@ -3,10 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "../../../../hooks/useAdmin";
-import { 
-  CalendarDays, Search, Filter, Phone, CheckCircle2, 
-  XCircle, Clock, Edit2, Trash2, X, Plus
-} from "lucide-react";
+import { Edit2, Trash2, X, Plus } from "lucide-react";
 
 // --- TYPES ---
 type BookingStatus = "Confirmed" | "Pending" | "Cancelled";
@@ -49,7 +46,7 @@ export default function BookingsManagement() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const newBooking: Booking = {
-      id: editingBooking ? editingBooking.id : Math.random().toString(36).substr(2, 9),
+      id: editingBooking ? editingBooking.id : Math.random().toString(36).substring(2, 11),
       name: formData.get("name") as string,
       phone: formData.get("phone") as string,
       expectedCheckIn: formData.get("expectedCheckIn") as string,

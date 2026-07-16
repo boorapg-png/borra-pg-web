@@ -128,6 +128,9 @@ export type PaymentRecord = Payment;
 
 export interface GlobalSettings {
   electricityRatePerUnit: number;
+  rateHistory?: any[];         // <--- Added to fix line 9
+  gracePeriodDays?: number;    // <--- Added to fix line 11
+  lateFeeEnabled?: boolean;    // <--- Added to fix line 12
   waterCharge?: number;
   maintenanceFee?: number;
   lateFeeAmount?: number;

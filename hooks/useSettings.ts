@@ -6,7 +6,7 @@ import { GlobalSettings } from "@/types";
 
 const defaultSettings: GlobalSettings = {
   electricityRatePerUnit: 8.5,
-  rateHistory: [],
+  rateHistory: [] as unknown[],
   noticePeriodDays: 30,
   gracePeriodDays: 7,
   lateFeeEnabled: false,
