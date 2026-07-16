@@ -1,49 +1,72 @@
-import { MapPin, Phone } from "lucide-react";
+import React from 'react';
+import { MapPin, Phone, Mail } from 'lucide-react';
 
 export default function LocationSection() {
   return (
-    <section className="py-20 bg-white" id="location">
+    <section id="location" className="py-20 bg-white">
       <div className="container mx-auto px-4 max-w-6xl">
-        <h2 className="text-4xl font-playfair font-bold text-navy text-center mb-12">Our Location</h2>
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="w-full lg:w-2/3 h-[400px] bg-gray-200 rounded-xl overflow-hidden shadow-md">
-            <iframe 
-              src="https://maps.google.com/maps?q=Boora+PG+Valley+Estate,+MDC+Sector+4,+Panchkula&t=&z=15&ie=UTF8&iwloc=&output=embed" 
-              width="100%" 
-              height="100%" 
-              style={{ border: 0 }} 
-              allowFullScreen 
-              loading="lazy" 
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
-          </div>
-          <div className="w-full lg:w-1/3 flex flex-col justify-center space-y-8">
-            <div className="bg-softgrey p-6 rounded-xl border border-gray-100">
-              <h3 className="font-playfair text-2xl font-bold text-navy mb-4 flex items-center gap-2">
-                <MapPin className="text-gold" /> Address
-              </h3>
-              <p className="text-gray-600">
-                MDC Sector 6 Rd, near Panchkula Boora PG Valley Estate,<br />
-                near IT Park Road, Mansa Devi Complex, Bhainsa Tibba,<br />
-                MDC Sector 4, Panchkula, Haryana 134114
-              </p>
-            </div>
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-playfair font-bold text-navy mb-4">Visit Boora PG</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Conveniently located in Panchkula with easy access to major transport hubs, markets, and IT parks. Reach out to schedule a guided tour.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Contact Cards (Left Side) */}
+          <div className="lg:col-span-1 space-y-6">
             
-            <div className="bg-softgrey p-6 rounded-xl border border-gray-100">
-               <h3 className="font-playfair text-2xl font-bold text-navy mb-4 flex items-center gap-2">
-                <Phone className="text-gold" /> Contact
-              </h3>
-              <p className="text-gray-600 text-xl font-semibold">7696735209</p>
+            {/* Phone Card */}
+            <a href="tel:+917696735209" className="flex items-start gap-4 p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gold hover:shadow-md transition-all group">
+              <div className="w-12 h-12 rounded-full bg-navy/5 text-navy flex items-center justify-center group-hover:bg-gold group-hover:text-white transition-colors shrink-0">
+                <Phone size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">Call Us</h3>
+                <p className="text-navy font-semibold text-lg">+91 7696735209</p>
+                <p className="text-xs text-gray-500 mt-1">Available Mon-Sat, 9 AM to 8 PM</p>
+              </div>
+            </a>
+
+            {/* Email Card */}
+            <a href="mailto:contact@boorapg.com" className="flex items-start gap-4 p-6 bg-gray-50 rounded-2xl border border-gray-100 hover:border-gold hover:shadow-md transition-all group">
+              <div className="w-12 h-12 rounded-full bg-navy/5 text-navy flex items-center justify-center group-hover:bg-gold group-hover:text-white transition-colors shrink-0">
+                <Mail size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">Email Us</h3>
+                <p className="text-navy font-semibold text-lg">contact@boorapg.com</p>
+                <p className="text-xs text-gray-500 mt-1">We typically reply within 24 hours</p>
+              </div>
+            </a>
+
+            {/* Address Card */}
+            <div className="flex items-start gap-4 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="w-12 h-12 rounded-full bg-navy/5 text-navy flex items-center justify-center shrink-0">
+                <MapPin size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 mb-1">Location</h3>
+                <p className="text-gray-600 font-medium leading-relaxed">
+                  MDC Sector 6 Rd, <br />
+                  Mansa Devi Complex, <br />
+                  Panchkula, Haryana 134114
+                </p>
+              </div>
             </div>
 
-            <div className="p-4">
-              <ul className="space-y-2 text-gray-600 list-disc list-inside">
-                <li><strong>IT Park Chandigarh:</strong> ~2 mins</li>
-                <li><strong>Infosys Campus:</strong> ~3 mins</li>
-                <li><strong>Chandigarh Railway Station:</strong> ~15 mins</li>
-                <li><strong>ISBT Sector 43:</strong> ~25 mins</li>
-              </ul>
-            </div>
+          </div>
+
+          {/* Interactive Google Map (Right Side) */}
+          <div className="lg:col-span-2 bg-gray-100 rounded-2xl overflow-hidden border border-gray-200 min-h-[400px] relative">
+            <iframe
+              src="https://maps.google.com/maps?q=Boora+PG,+Panchkula&t=&z=15&ie=UTF8&iwloc=&output=embed"
+              className="absolute inset-0 w-full h-full"
+              style={{ border: 0 }}
+              allowFullScreen={true}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            ></iframe>
           </div>
         </div>
       </div>

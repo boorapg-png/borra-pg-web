@@ -1,49 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Building2,
-  Layers,
-  Bed,
-  Plus,
-  Edit2,
-  Trash2,
-  X,
-  ChevronDown,
-  ChevronRight,
-  Zap,
-  Wind,
-  Bath
+  Building2, Layers, Bed, Plus, Edit2, Trash2, X,
+  ChevronDown, ChevronRight, Zap, Wind, Bath, Loader2, User, Phone, CheckCircle2
 } from "lucide-react";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-// ─── TYPES
+// --- IMPORT FIREBASE HOOKS & SERVICES ---
+import { useBuildings, useFloors, useRooms } from "@/hooks/useBuildings";
+import { buildingService } from "@/services/buildings.service";
+import { floorService } from "@/services/floors.service";
+import { roomService } from "@/services/rooms.service";
+import { Building, Floor, Room, Bed as BedType, Tenant } from "@/types";
 
-interface Building {
-  id: string;
-  name: string;
-}
-
-interface Floor {
-  id: string;
-  buildingId: string;
-  name: string;
-  order: number;
-}
-
-interface Room {
-  id: string;
-  buildingId: string;
-  floorId: string;
-  number: string;
-  type: "Single" | "Double" | "Triple";
-  bedsTotal: number;
-  pricePerBed: number;
-  status: "available" | "occupied" | "partial" | "maintenance";
-  ac: boolean;
-  attachedBath: boolean;
-  meterNumber: string;
-}
-
+// ─── TYPES & HELPERS
 type ModalState =
   | { type: "add-building" }
   | { type: "edit-building"; building: Building }
@@ -51,147 +23,110 @@ type ModalState =
   | { type: "edit-floor"; floor: Floor }
   | { type: "add-room"; buildingId: string; floorId: string }
   | { type: "edit-room"; room: Room }
+  | { type: "view-room"; room: Room }
   | null;
 
-// ─── HELPERS
-
-const uid = () => Math.random().toString(36).slice(2, 9);
 const INR = (n: number) => "₹" + n.toLocaleString("en-IN");
-const bedCount = (type: "Single" | "Double" | "Triple") =>
-  type === "Single" ? 1 : type === "Double" ? 2 : 3;
-
-// ─── SEED DATA
-
-const initialBuildings: Building[] = [
-  { id: "b1", name: "Block A" },
-  { id: "b2", name: "Block B" },
-];
-
-const initialFloors: Floor[] = [
-  { id: "f1", buildingId: "b1", name: "Ground Floor", order: 0 },
-  { id: "f2", buildingId: "b1", name: "1st Floor", order: 1 },
-  { id: "f3", buildingId: "b2", name: "Ground Floor", order: 0 },
-];
-
-const initialRooms: Room[] = [
-  {
-    id: "r1",
-    buildingId: "b1",
-    floorId: "f1",
-    number: "101",
-    type: "Double",
-    bedsTotal: 2,
-    pricePerBed: 6000,
-    status: "partial",
-    ac: true,
-    attachedBath: true,
-    meterNumber: "M-101",
-  },
-  {
-    id: "r2",
-    buildingId: "b1",
-    floorId: "f1",
-    number: "102",
-    type: "Single",
-    bedsTotal: 1,
-    pricePerBed: 8000,
-    status: "occupied",
-    ac: false,
-    attachedBath: true,
-    meterNumber: "M-102",
-  },
-  {
-    id: "r3",
-    buildingId: "b1",
-    floorId: "f2",
-    number: "201",
-    type: "Triple",
-    bedsTotal: 3,
-    pricePerBed: 5000,
-    status: "available",
-    ac: true,
-    attachedBath: false,
-    meterNumber: "M-201",
-  },
-  {
-    id: "r4",
-    buildingId: "b2",
-    floorId: "f3",
-    number: "101",
-    type: "Double",
-    bedsTotal: 2,
-    pricePerBed: 5500,
-    status: "maintenance",
-    ac: false,
-    attachedBath: false,
-    meterNumber: "M-101B",
-  },
-];
+const bedCount = (type: "Single" | "Double" | "Triple") => type === "Single" ? 1 : type === "Double" ? 2 : 3;
 
 // ─── ROOT COMPONENT
-
 export default function BuildingManagement() {
-  const [buildings, setBuildings] = useState<Building[]>(initialBuildings);
-  const [floors, setFloors] = useState<Floor[]>(initialFloors);
-  const [rooms, setRooms] = useState<Room[]>(initialRooms);
-  const [activeBuilding, setActiveBuilding] = useState<string>("b1");
+  const { buildings, loading: bLoading } = useBuildings();
+  
+  const [activeBuilding, setActiveBuilding] = useState<string>("");
   const [collapsedFloors, setCollapsedFloors] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<ModalState>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // CRUD Actions
-  const saveBuilding = (name: string, id?: string) => {
-    if (id) {
-      setBuildings((prev) => prev.map((b) => (b.id === id ? { ...b, name } : b)));
-    } else {
-      const newId = uid();
-      setBuildings((prev) => [...prev, { id: newId, name }]);
-      setActiveBuilding(newId);
+  useEffect(() => {
+    if (buildings.length > 0 && !activeBuilding) {
+      setActiveBuilding(buildings[0].id);
+    } else if (buildings.length === 0) {
+      setActiveBuilding("");
     }
-    setModal(null);
-  };
+  }, [buildings, activeBuilding]);
 
-  const deleteBuilding = (id: string) => {
-    const floorsToDelete = floors.filter((f) => f.buildingId === id).map((f) => f.id);
-    setBuildings((prev) => prev.filter((b) => b.id !== id));
-    setFloors((prev) => prev.filter((f) => f.buildingId !== id));
-    setRooms((prev) => prev.filter((r) => !floorsToDelete.includes(r.floorId)));
-    setConfirmDelete(null);
-    const remaining = buildings.filter((b) => b.id !== id);
-    if (activeBuilding === id) setActiveBuilding(remaining.length > 0 ? remaining[0].id : "");
-  };
+  const { floors, loading: fLoading } = useFloors(activeBuilding || null);
+  const { rooms, loading: rLoading } = useRooms(activeBuilding || null);
 
-  const saveFloor = (name: string, buildingId: string, id?: string) => {
-    if (id) {
-      setFloors((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)));
-    } else {
-      const bFloors = floors.filter((f) => f.buildingId === buildingId);
-      const nextOrder = bFloors.length > 0 ? Math.max(...bFloors.map((f) => f.order)) + 1 : 0;
-      setFloors((prev) => [...prev, { id: uid(), buildingId, name, order: nextOrder }]);
+  // ─── FIREBASE CRUD ACTIONS ───
+  const saveBuilding = async (name: string, id?: string) => {
+    setIsSaving(true);
+    try {
+      if (id) {
+        await buildingService.update(id, name);
+      } else {
+        const newId = await buildingService.add(name);
+        setActiveBuilding(newId);
+      }
+      setModal(null);
+    } catch (error) {
+      console.error("Error saving building:", error);
+      alert("Failed to save building.");
+    } finally {
+      setIsSaving(false);
     }
-    setModal(null);
   };
 
-  const deleteFloor = (id: string) => {
-    setFloors((prev) => prev.filter((f) => f.id !== id));
-    setRooms((prev) => prev.filter((r) => r.floorId !== id));
-    setConfirmDelete(null);
-  };
-
-  const saveRoom = (data: Partial<Room>, id?: string) => {
-    const bedsTotal = bedCount(data.type as "Single" | "Double" | "Triple");
-    if (id) {
-      // FIX: Removed 'as any' to satisfy TypeScript strict mode
-      setRooms((prev) => prev.map((r) => (r.id === id ? ({ ...r, ...data, bedsTotal } as Room) : r)));
-    } else {
-      setRooms((prev) => [...prev, { ...data, id: uid(), bedsTotal } as Room]);
+  const deleteBuilding = async (id: string) => {
+    try {
+      await buildingService.delete(id); 
+      setConfirmDelete(null);
+      const remaining = buildings.filter((b) => b.id !== id);
+      if (activeBuilding === id) setActiveBuilding(remaining.length > 0 ? remaining[0].id : "");
+    } catch (error) {
+      console.error("Error deleting building:", error);
+      alert("Failed to delete building.");
     }
-    setModal(null);
   };
 
-  const deleteRoom = (id: string) => {
-    setRooms((prev) => prev.filter((r) => r.id !== id));
-    setConfirmDelete(null);
+  const saveFloor = async (name: string, buildingId: string, id?: string) => {
+    setIsSaving(true);
+    try {
+      if (id) await floorService.update(id, name);
+      else await floorService.add(buildingId, name);
+      setModal(null);
+    } catch (error) {
+      console.error("Error saving floor:", error);
+      alert("Failed to save floor.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteFloor = async (id: string) => {
+    try {
+      await floorService.delete(id);
+      setConfirmDelete(null);
+    } catch (error) {
+      console.error("Error deleting floor:", error);
+      alert("Failed to delete floor.");
+    }
+  };
+
+  const saveRoom = async (data: any, id?: string) => {
+    setIsSaving(true);
+    try {
+      if (id) await roomService.update(id, data);
+      else await roomService.add(data);
+      setModal(null);
+    } catch (error) {
+      console.error("Error saving room:", error);
+      alert("Failed to save room.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteRoom = async (id: string) => {
+    try {
+      await roomService.delete(id);
+      setConfirmDelete(null);
+    } catch (error) {
+      console.error("Error deleting room:", error);
+      alert("Failed to delete room.");
+    }
   };
 
   const toggleFloorCollapse = (floorId: string) => {
@@ -204,21 +139,20 @@ export default function BuildingManagement() {
   };
 
   const currentBuilding = buildings.find((b) => b.id === activeBuilding);
-  const currentFloors = floors.filter((f) => f.buildingId === activeBuilding).sort((a, b) => a.order - b.order);
-  const currentRooms = rooms.filter((r) => r.buildingId === activeBuilding);
-
+  
   const getStatusColor = (status: Room["status"]) => {
     switch (status) {
-      case "available":
-        return "bg-green-100 text-green-700";
-      case "occupied":
-        return "bg-red-100 text-red-700";
-      case "partial":
-        return "bg-amber-100 text-amber-700";
-      case "maintenance":
-        return "bg-gray-100 text-gray-500";
+      case "available": return "bg-green-100 text-green-700 border-green-200";
+      case "occupied": return "bg-red-100 text-red-700 border-red-200";
+      case "partial": return "bg-amber-100 text-amber-700 border-amber-200";
+      case "maintenance": return "bg-gray-100 text-gray-500 border-gray-200";
+      default: return "bg-gray-100 text-gray-500 border-gray-200";
     }
   };
+
+  if (bLoading) {
+    return <div className="h-full flex items-center justify-center text-navy"><Loader2 className="animate-spin" size={32} /></div>;
+  }
 
   return (
     <div className="flex flex-col h-full space-y-6">
@@ -226,14 +160,13 @@ export default function BuildingManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-navy">Building Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage buildings, floors and rooms</p>
+          <p className="text-sm text-gray-500 mt-1">Manage buildings, floors and rooms directly in Firebase</p>
         </div>
         <button
           onClick={() => setModal({ type: "add-building" })}
           className="flex items-center gap-2 bg-navy text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-navy/90 transition-colors"
         >
-          <Plus size={16} />
-          Add Building
+          <Plus size={16} /> Add Building
         </button>
       </div>
 
@@ -256,27 +189,17 @@ export default function BuildingManagement() {
           {/* Building Tabs */}
           <div className="flex overflow-x-auto border-b border-gray-200">
             {buildings.map((b) => {
-              const bRooms = rooms.filter((r) => r.buildingId === b.id);
-              const bBeds = bRooms.reduce((acc, r) => acc + r.bedsTotal, 0);
               const isActive = activeBuilding === b.id;
               return (
                 <button
                   key={b.id}
                   onClick={() => setActiveBuilding(b.id)}
-                  className={`flex flex-col items-start px-6 py-3 border-b-2 transition-colors whitespace-nowrap min-w-35 ${
+                  className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-colors whitespace-nowrap min-w-35 ${
                     isActive ? "border-gold bg-gold/5 text-gold" : "border-transparent text-gray-500 hover:bg-gray-50"
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Building2 size={16} className={isActive ? "text-gold" : "text-gray-400"} />
-                    <span className={`font-semibold ${isActive ? "text-gold" : "text-gray-700"}`}>{b.name}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? "bg-gold text-white" : "bg-gray-100 text-gray-500"}`}>
-                      {bRooms.length}
-                    </span>
-                  </div>
-                  <span className={`text-xs mt-1 ${isActive ? "text-gold/80" : "text-gray-400"}`}>
-                    {bBeds} beds total
-                  </span>
+                  <Building2 size={18} className={isActive ? "text-gold" : "text-gray-400"} />
+                  <span className={`font-semibold ${isActive ? "text-gold" : "text-gray-700"}`}>{b.name}</span>
                 </button>
               );
             })}
@@ -284,11 +207,15 @@ export default function BuildingManagement() {
 
           {/* Building Body */}
           {currentBuilding && (
-            <div className="p-6 flex-1 overflow-y-auto">
+            <div className="p-6 flex-1 overflow-y-auto relative">
+              {fLoading || rLoading ? (
+                 <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-10"><Loader2 className="animate-spin text-navy" size={24} /></div>
+              ) : null}
+
               {/* Building Header Controls */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                 <div className="text-gray-600 text-sm font-medium">
-                  {currentFloors.length} floor(s) · {currentRooms.length} room(s)
+                  {floors.length} floor(s) · {rooms.length} room(s)
                 </div>
                 <div className="flex items-center gap-3">
                   <button
@@ -299,7 +226,7 @@ export default function BuildingManagement() {
                   </button>
                   {confirmDelete === `building-${currentBuilding.id}` ? (
                     <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-1.5 rounded-md">
-                      <span className="font-semibold">Delete building + all floors & rooms?</span>
+                      <span className="font-semibold">Delete building + all data?</span>
                       <button onClick={() => deleteBuilding(currentBuilding.id)} className="font-bold hover:underline ml-1">Yes</button>
                       <span className="text-red-300">|</span>
                       <button onClick={() => setConfirmDelete(null)} className="font-bold hover:underline">No</button>
@@ -317,19 +244,19 @@ export default function BuildingManagement() {
 
               {/* Floors List */}
               <div className="space-y-6">
-                {currentFloors.length === 0 ? (
+                {floors.length === 0 ? (
                   <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-gray-500">
                     <Layers size={32} className="mb-3 text-gray-300" />
                     <p className="font-medium text-sm">No floors added yet</p>
                   </div>
                 ) : (
-                  currentFloors.map((floor) => {
-                    const floorRooms = currentRooms.filter((r) => r.floorId === floor.id);
+                  floors.map((floor) => {
+                    const floorRooms = rooms.filter((r) => r.floorId === floor.id);
                     const isCollapsed = collapsedFloors.has(floor.id);
                     const isFloorConfirmingDelete = confirmDelete === `floor-${floor.id}`;
 
                     return (
-                      <div key={floor.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                      <div key={floor.id} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                         {/* FLOOR HEADER */}
                         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div
@@ -391,11 +318,16 @@ export default function BuildingManagement() {
                                 {floorRooms.map((room) => {
                                   const isRoomConfirmingDelete = confirmDelete === `room-${room.id}`;
                                   return (
-                                    <div key={room.id} className="border border-gray-200 rounded-lg shadow-sm flex flex-col bg-white">
+                                    // Clicking the card opens the new "View Room" modal
+                                    <div 
+                                      key={room.id} 
+                                      onClick={() => setModal({ type: "view-room", room })}
+                                      className="border border-gray-200 rounded-lg shadow-sm flex flex-col bg-white hover:border-gold hover:shadow-md cursor-pointer transition-all group"
+                                    >
                                       <div className="p-4 flex-1">
                                         <div className="flex justify-between items-start mb-3">
-                                          <h4 className="text-lg font-bold text-navy">Room {room.number}</h4>
-                                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${getStatusColor(room.status)}`}>
+                                          <h4 className="text-lg font-bold text-navy group-hover:text-gold transition-colors">Room {room.number}</h4>
+                                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${getStatusColor(room.status)}`}>
                                             {room.status}
                                           </span>
                                         </div>
@@ -403,7 +335,7 @@ export default function BuildingManagement() {
                                           <Bed size={16} className="text-gray-400" />
                                           {room.type} · {room.bedsTotal} beds
                                         </div>
-                                        <div className="text-lg font-bold text-gold mb-4">
+                                        <div className="text-lg font-bold text-gray-800 mb-4">
                                           {INR(room.pricePerBed)} <span className="text-xs font-medium text-gray-500">/bed/month</span>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -424,12 +356,13 @@ export default function BuildingManagement() {
                                           )}
                                         </div>
                                       </div>
-                                      <div className="border-t border-gray-100 flex p-2 gap-2 bg-gray-50/50 rounded-b-lg">
+                                      {/* Stop propagation so edit/delete don't trigger the view modal */}
+                                      <div className="border-t border-gray-100 flex p-2 gap-2 bg-gray-50/50 rounded-b-lg" onClick={(e) => e.stopPropagation()}>
                                         <button
                                           onClick={() => setModal({ type: "edit-room", room })}
                                           className="flex-1 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
                                         >
-                                          Edit
+                                          Edit Info
                                         </button>
                                         {isRoomConfirmingDelete ? (
                                           <div className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded">
@@ -479,19 +412,21 @@ export default function BuildingManagement() {
           onClick={() => setModal(null)}
         >
           <div 
-            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-              <h2 className="text-lg font-bold text-navy">
+              <h2 className="text-lg font-bold text-navy flex items-center gap-2">
+                {isSaving && <Loader2 className="animate-spin text-gold" size={18} />}
                 {modal.type === "add-building" && "Add New Building"}
                 {modal.type === "edit-building" && "Edit Building"}
                 {modal.type === "add-floor" && "Add New Floor"}
                 {modal.type === "edit-floor" && "Edit Floor"}
                 {modal.type === "add-room" && "Add New Room"}
                 {modal.type === "edit-room" && "Edit Room"}
+                {modal.type === "view-room" && `Room ${modal.room.number} Overview`}
               </h2>
-              <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-700 transition-colors p-1">
+              <button onClick={() => setModal(null)} disabled={isSaving} className="text-gray-400 hover:text-gray-700 transition-colors p-1 disabled:opacity-50">
                 <X size={20} />
               </button>
             </div>
@@ -500,6 +435,7 @@ export default function BuildingManagement() {
               {(modal.type === "add-building" || modal.type === "edit-building") && (
                 <BuildingForm 
                   initialData={modal.type === "edit-building" ? modal.building : undefined}
+                  isSaving={isSaving}
                   onSave={(name) => saveBuilding(name, modal.type === "edit-building" ? modal.building.id : undefined)}
                   onCancel={() => setModal(null)}
                 />
@@ -508,6 +444,7 @@ export default function BuildingManagement() {
               {(modal.type === "add-floor" || modal.type === "edit-floor") && (
                 <FloorForm 
                   initialData={modal.type === "edit-floor" ? modal.floor : undefined}
+                  isSaving={isSaving}
                   onSave={(name) => saveFloor(name, modal.type === "add-floor" ? modal.buildingId : modal.floor.buildingId, modal.type === "edit-floor" ? modal.floor.id : undefined)}
                   onCancel={() => setModal(null)}
                 />
@@ -518,9 +455,14 @@ export default function BuildingManagement() {
                   initialData={modal.type === "edit-room" ? modal.room : undefined}
                   buildingId={modal.type === "add-room" ? modal.buildingId : modal.room.buildingId}
                   floorId={modal.type === "add-room" ? modal.floorId : modal.room.floorId}
+                  isSaving={isSaving}
                   onSave={(data) => saveRoom(data, modal.type === "edit-room" ? modal.room.id : undefined)}
                   onCancel={() => setModal(null)}
                 />
+              )}
+
+              {modal.type === "view-room" && (
+                <RoomDetailsView room={modal.room} />
               )}
             </div>
           </div>
@@ -530,82 +472,162 @@ export default function BuildingManagement() {
   );
 }
 
-// ─── BUILDING FORM
+// ─── ROOM DETAILS VIEW (NEW) ───
+function RoomDetailsView({ room }: { room: Room }) {
+  const [beds, setBeds] = useState<BedType[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [loading, setLoading] = useState(true);
 
-function BuildingForm({ initialData, onSave, onCancel }: { initialData?: Building, onSave: (name: string) => void, onCancel: () => void }) {
+  useEffect(() => {
+    const fetchRoomDetails = async () => {
+      try {
+        // 1. Fetch all beds for this specific room
+        const bedsSnap = await getDocs(query(collection(db, "beds"), where("roomId", "==", room.id)));
+        const fetchedBeds = bedsSnap.docs.map(d => d.data() as BedType).sort((a,b) => a.bedLabel.localeCompare(b.bedLabel));
+        setBeds(fetchedBeds);
+
+        // 2. Find which tenants are currently assigned to these beds
+        const activeTenantIds = fetchedBeds.filter(b => b.currentTenantId).map(b => b.currentTenantId as string);
+        
+        // 3. Fetch the tenant profiles (using an 'in' query)
+        if (activeTenantIds.length > 0) {
+          const tenantsSnap = await getDocs(query(collection(db, "tenants"), where("id", "in", activeTenantIds)));
+          setTenants(tenantsSnap.docs.map(d => d.data() as Tenant));
+        }
+      } catch (error) {
+        console.error("Error fetching room details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRoomDetails();
+  }, [room.id]);
+
+  if (loading) {
+    return <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-navy" size={24} /></div>;
+  }
+
+  const availableCount = beds.filter(b => b.status === "available").length;
+
+  return (
+    <div className="space-y-6">
+      {/* Top Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-gray-50 border border-gray-200 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-navy">{room.bedsTotal}</div>
+          <div className="text-xs font-semibold text-gray-500 uppercase">Total Beds</div>
+        </div>
+        <div className="bg-green-50 border border-green-200 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-green-700">{availableCount}</div>
+          <div className="text-xs font-semibold text-green-600 uppercase">Available</div>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-amber-700">{room.bedsTotal - availableCount}</div>
+          <div className="text-xs font-semibold text-amber-600 uppercase">Occupied</div>
+        </div>
+      </div>
+
+      {/* Bed & Tenant List */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-2">Current Occupants</h3>
+        {beds.map((bed) => {
+          const tenant = tenants.find(t => t.id === bed.currentTenantId);
+
+          if (bed.status === "available") {
+            return (
+              <div key={bed.id} className="flex items-center gap-4 p-4 rounded-xl border border-dashed border-green-300 bg-green-50/50">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold">
+                  {bed.bedLabel}
+                </div>
+                <div>
+                  <div className="font-bold text-green-700 text-sm">Bed is Available</div>
+                  <div className="text-xs text-green-600/70">Ready for a new tenant</div>
+                </div>
+              </div>
+            );
+          }
+
+          if (tenant) {
+            return (
+              <div key={bed.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-navy text-white flex items-center justify-center font-bold">
+                    {bed.bedLabel}
+                  </div>
+                  <div>
+                    <div className="font-bold text-gray-900 text-sm">{tenant.name}</div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                      <span className="flex items-center gap-1"><Phone size={10} /> {tenant.phone}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ${tenant.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    Rent {tenant.paymentStatus}
+                  </div>
+                  <div className="text-[10px] text-gray-400 mt-1">
+                    Joined: {tenant.joiningDate ? tenant.joiningDate.toDate().toLocaleDateString("en-IN") : "-"}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          
+          return null; // Fallback in case of data mismatch
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── BUILDING FORM ───
+function BuildingForm({ initialData, isSaving, onSave, onCancel }: { initialData?: Building, isSaving: boolean, onSave: (name: string) => void, onCancel: () => void }) {
   const [name, setName] = useState(initialData?.name || "");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name.trim()) onSave(name.trim());
-  };
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (name.trim()) onSave(name.trim()); };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Building Name</label>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Block A, Wing B"
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors"
-        />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} disabled={isSaving} placeholder="e.g. Block A, Wing B" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors disabled:bg-gray-50" />
       </div>
       <div className="flex gap-3">
-        <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-        <button type="submit" disabled={!name.trim()} className="flex-1 px-4 py-2.5 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50">Save Building</button>
+        <button type="button" onClick={onCancel} disabled={isSaving} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={!name.trim() || isSaving} className="flex-1 px-4 py-2.5 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50">Save Building</button>
       </div>
     </form>
   );
 }
 
-// ─── FLOOR FORM
-
-function FloorForm({ initialData, onSave, onCancel }: { initialData?: Floor, onSave: (name: string) => void, onCancel: () => void }) {
+// ─── FLOOR FORM ───
+function FloorForm({ initialData, isSaving, onSave, onCancel }: { initialData?: Floor, isSaving: boolean, onSave: (name: string) => void, onCancel: () => void }) {
   const [name, setName] = useState(initialData?.name || "");
   const presets = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor", "4th Floor", "Terrace", "Basement"];
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name.trim()) onSave(name.trim());
-  };
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (name.trim()) onSave(name.trim()); };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Floor Name</label>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Ground Floor, 1st Floor"
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors mb-3"
-        />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} disabled={isSaving} placeholder="e.g. Ground Floor, 1st Floor" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors mb-3 disabled:bg-gray-50" />
         <div className="flex flex-wrap gap-2">
           {presets.map(p => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setName(p)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${name === p ? "bg-navy text-white border-navy" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
-            >
+            <button key={p} type="button" disabled={isSaving} onClick={() => setName(p)} className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors disabled:opacity-50 ${name === p ? "bg-navy text-white border-navy" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
               {p}
             </button>
           ))}
         </div>
       </div>
       <div className="flex gap-3">
-        <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-        <button type="submit" disabled={!name.trim()} className="flex-1 px-4 py-2.5 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50">Save Floor</button>
+        <button type="button" onClick={onCancel} disabled={isSaving} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={!name.trim() || isSaving} className="flex-1 px-4 py-2.5 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50">Save Floor</button>
       </div>
     </form>
   );
 }
 
-// ─── ROOM FORM
-
-function RoomForm({ initialData, buildingId, floorId, onSave, onCancel }: { initialData?: Room, buildingId: string, floorId: string, onSave: (data: Partial<Room>) => void, onCancel: () => void }) {
+// ─── ROOM FORM ───
+function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel }: { initialData?: Room, buildingId: string, floorId: string, isSaving: boolean, onSave: (data: any) => void, onCancel: () => void }) {
   const [number, setNumber] = useState(initialData?.number || "");
   const [meterNumber, setMeterNumber] = useState(initialData?.meterNumber || "");
   const [type, setType] = useState<"Single" | "Double" | "Triple">(initialData?.type || "Single");
@@ -620,17 +642,7 @@ function RoomForm({ initialData, buildingId, floorId, onSave, onCancel }: { init
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isComplete) {
-      onSave({
-        buildingId,
-        floorId,
-        number: number.trim(),
-        meterNumber: meterNumber.trim(),
-        type,
-        pricePerBed: priceNum,
-        status,
-        ac,
-        attachedBath
-      });
+      onSave({ buildingId, floorId, number: number.trim(), meterNumber: meterNumber.trim(), type, pricePerBed: priceNum, status, ac, attachedBath });
     }
   };
 
@@ -639,22 +651,11 @@ function RoomForm({ initialData, buildingId, floorId, onSave, onCancel }: { init
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Room Number</label>
-          <input
-            autoFocus
-            value={number}
-            onChange={(e) => setNumber(e.target.value)}
-            placeholder="e.g. 101"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors"
-          />
+          <input autoFocus value={number} onChange={(e) => setNumber(e.target.value)} disabled={isSaving} placeholder="e.g. 101" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors disabled:bg-gray-50" />
         </div>
         <div>
           <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Meter Number</label>
-          <input
-            value={meterNumber}
-            onChange={(e) => setMeterNumber(e.target.value)}
-            placeholder="e.g. M-101"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors"
-          />
+          <input value={meterNumber} onChange={(e) => setMeterNumber(e.target.value)} disabled={isSaving} placeholder="e.g. M-101" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors disabled:bg-gray-50" />
         </div>
       </div>
 
@@ -662,12 +663,7 @@ function RoomForm({ initialData, buildingId, floorId, onSave, onCancel }: { init
         <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Room Type</label>
         <div className="grid grid-cols-3 gap-2">
           {(["Single", "Double", "Triple"] as const).map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setType(t)}
-              className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors ${type === t ? "bg-navy border-navy text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-            >
+            <button key={t} type="button" disabled={isSaving} onClick={() => setType(t)} className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors disabled:opacity-50 ${type === t ? "bg-navy border-navy text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
               <span className="font-semibold text-sm">{t}</span>
               <span className={`text-[10px] mt-0.5 ${type === t ? "text-gray-300" : "text-gray-400"}`}>{bedCount(t)} bed{bedCount(t) > 1 && "s"}</span>
             </button>
@@ -679,29 +675,13 @@ function RoomForm({ initialData, buildingId, floorId, onSave, onCancel }: { init
         <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Price Per Bed (Monthly)</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₹</span>
-          <input
-            type="number"
-            value={pricePerBed}
-            onChange={(e) => setPricePerBed(e.target.value)}
-            placeholder="0"
-            className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors"
-          />
+          <input type="number" value={pricePerBed} onChange={(e) => setPricePerBed(e.target.value)} disabled={isSaving} placeholder="0" className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors disabled:bg-gray-50" />
         </div>
-        {(type === "Double" || type === "Triple") && priceNum > 0 && (
-          <p className="text-xs text-gray-500 mt-2">
-            Total room value: <span className="font-semibold text-gray-700">₹{(priceNum * bedCount(type)).toLocaleString("en-IN")}/month</span> ({bedCount(type)} beds)
-          </p>
-        )}
       </div>
 
       <div>
         <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Current Status</label>
-        <select
-          value={status}
-          // FIX: Explicitly cast the value to the Room["status"] type instead of 'any'
-          onChange={(e) => setStatus(e.target.value as Room["status"])}
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors bg-white"
-        >
+        <select value={status} onChange={(e) => setStatus(e.target.value as Room["status"])} disabled={isSaving} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors bg-white disabled:bg-gray-50">
           <option value="available">Available</option>
           <option value="occupied">Occupied</option>
           <option value="partial">Partial</option>
@@ -713,19 +693,19 @@ function RoomForm({ initialData, buildingId, floorId, onSave, onCancel }: { init
         <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 block">Amenities</label>
         <div className="flex gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={ac} onChange={(e) => setAc(e.target.checked)} className="w-4 h-4 text-gold focus:ring-gold border-gray-300 rounded" />
+            <input type="checkbox" checked={ac} onChange={(e) => setAc(e.target.checked)} disabled={isSaving} className="w-4 h-4 text-gold focus:ring-gold border-gray-300 rounded disabled:opacity-50" />
             <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><Wind size={16} className="text-gray-400" /> AC Room</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={attachedBath} onChange={(e) => setAttachedBath(e.target.checked)} className="w-4 h-4 text-gold focus:ring-gold border-gray-300 rounded" />
+            <input type="checkbox" checked={attachedBath} onChange={(e) => setAttachedBath(e.target.checked)} disabled={isSaving} className="w-4 h-4 text-gold focus:ring-gold border-gray-300 rounded disabled:opacity-50" />
             <span className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><Bath size={16} className="text-gray-400" /> Attached Bath</span>
           </label>
         </div>
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-        <button type="submit" disabled={!isComplete} className="flex-1 px-4 py-2.5 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50">Save Room</button>
+        <button type="button" onClick={onCancel} disabled={isSaving} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={!isComplete || isSaving} className="flex-1 px-4 py-2.5 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors disabled:opacity-50">Save Room</button>
       </div>
     </form>
   );

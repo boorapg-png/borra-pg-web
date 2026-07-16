@@ -1,57 +1,30 @@
-// types/index.ts
-
-export interface Admin {
-  uid: string;
-  email: string;
-  role: "admin";
-}
-
 export interface Tenant {
-  uid: string;
-  personalInfo: {
-    name: string;
-    dob: string;
-    aadhaar: string;
-    phone: string;
-    email: string;
-    homeAddress: string;
-    emergencyContact: string;
+  id: string;
+  name: string;
+  phone: string;
+  dob: string;
+  gender: "Male" | "Female" | "Other";
+  aadhaarNumber: string;
+  emergencyContact: string; // Suggested addition
+  status: "active" | "inactive";
+  joiningDate: Timestamp;
+  leavingDate: Timestamp | null;
+  documentStatus: "completed" | "pending";
+  documentUrl?: string; // To store the uploaded ID file
+  paymentStatus: "paid" | "pending" | "overdue";
+  accommodation: {
+    buildingId: string;
+    floorId: string;
+    roomId: string;
+    bedId: string;
   };
-  roomInfo: {
-    roomNumber: string;
-    floor: string;
-    type: "Single" | "Double" | "Triple";
-    ac: boolean;
-    rentAmount: number;
-    securityDeposit: number;
-    moveInDate: string;
-  };
-  status: "active" | "vacated";
-  createdAt: Date;
-  documents: {
-    name: string;
-    url: string;
-    uploadedAt: Date;
-  }[];
+  createdAt: Timestamp;
 }
-
-export interface PaymentRecord {
-  id?: string;
-  month: string; // e.g. "2024-06"
-  amount: number;
-  paymentDate: Date;
-  paymentMode: "cash" | "upi" | "bank" | "cheque";
-  notes: string;
-  recordedAt: Date;
-  recordedBy: string; // Admin UID
-}
-
 export interface Expense {
-  id?: string;
-  category: "Maintenance" | "Electricity" | "Water" | "Salary" | "Food/Canteen" | "Renovation" | "Miscellaneous" | "Other";
+  id: string;
+  category: "Maintenance" | "Salary" | "Electricity" | "Groceries" | "Water" | "Other";
   amount: number;
-  date: Date;
   description: string;
-  receiptUrl: string | null;
-  addedBy: string; // Admin UID
+  date: Timestamp;
+  recordedBy: string;
 }

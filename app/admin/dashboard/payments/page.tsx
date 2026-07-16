@@ -1,144 +1,241 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAdmin } from "../../../../hooks/useAdmin";
+import React, { useState } from "react";
 import { 
-  IndianRupee, Smartphone, Banknote, CreditCard, Receipt, 
-  Edit2, Trash2, X, Plus, Search
+  FileText, AlertCircle, Receipt, Search, IndianRupee, 
+  CheckCircle2, Loader2, Calendar, X 
 } from "lucide-react";
+import { Timestamp } from "firebase/firestore";
+import { usePendingDues } from "@/hooks/useBills";
+import { paymentService } from "@/services/payments.service";
+import { Bill } from "@/types";
 
-// --- TYPES ---
-type PaymentMethod = "UPI" | "Cash" | "Bank Transfer";
+const INR = (n: number) => "₹" + n.toLocaleString("en-IN");
 
-interface Payment {
-  id: string;
-  tenantName: string;
-  room: string;
-  amount: number;
-  date: string;
-  method: PaymentMethod;
-  referenceId: string;
-}
+export default function PaymentsPage() {
+  const { bills: pendingBills, loading, totalDues } = usePendingDues();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [paymentModalBill, setPaymentModalBill] = useState<Bill | null>(null);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
 
-export default function PaymentsManagement() {
-  const { user, isAdmin, loading } = useAdmin();
-  const router = useRouter();
+  // Filter bills by tenant name or month
+  const filteredBills = pendingBills.filter(bill => 
+    bill.tenantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    bill.month.includes(searchTerm)
+  );
 
-  // --- STATE ---
-  const [payments, setPayments] = useState<Payment[]>([
-    { id: "p1", tenantName: "Aman Singh", room: "102", amount: 5000, date: "2026-07-14", method: "UPI", referenceId: "UPI123456789" },
-    { id: "p2", tenantName: "Sandeep Verma", room: "104", amount: 6000, date: "2026-07-13", method: "Bank Transfer", referenceId: "IMPS9876543" },
-  ]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
-
-  useEffect(() => {
-    if (!loading && (!user || !isAdmin)) router.push("/admin/login");
-  }, [user, isAdmin, loading, router]);
-
-  // --- HANDLERS ---
-  const handleDelete = (id: string) => {
-    if (confirm("Delete this payment record?")) {
-      setPayments(payments.filter(p => p.id !== id));
-    }
-  };
-
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const newPayment: Payment = {
-      id: editingPayment ? editingPayment.id : Math.random().toString(36).substr(2, 9),
-      tenantName: formData.get("tenantName") as string,
-      room: formData.get("room") as string,
-      amount: parseFloat(formData.get("amount") as string),
-      date: formData.get("date") as string,
-      method: formData.get("method") as PaymentMethod,
-      referenceId: formData.get("referenceId") as string,
-    };
-
-    if (editingPayment) {
-      setPayments(payments.map(p => p.id === editingPayment.id ? newPayment : p));
-    } else {
-      setPayments([...payments, newPayment]);
-    }
-    setIsModalOpen(false);
-    setEditingPayment(null);
-  };
-
-  if (loading) return <div className="p-10 text-center">Loading...</div>;
-  if (!user || !isAdmin) return null;
+  if (loading) return <div className="h-full flex items-center justify-center text-navy"><Loader2 className="animate-spin" size={32} /></div>;
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex justify-between items-center bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+    <div className="flex flex-col h-full space-y-6">
+      {/* Header & Main Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#1A2744]">Payments & Collections</h2>
+          <h1 className="text-2xl font-bold text-navy">Billing & Payments</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage active invoices and collect pending rent</p>
         </div>
-        <button 
-          onClick={() => { setEditingPayment(null); setIsModalOpen(true); }}
-          className="bg-[#1A2744] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1A2744]/90 flex items-center gap-2"
+        <button
+          onClick={() => setShowGenerateModal(true)}
+          className="flex items-center gap-2 bg-navy text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-navy/90 transition-colors shadow-sm"
         >
-          <Plus size={18} /> Record New Payment
+          <FileText size={18} /> Generate Monthly Bills
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1 overflow-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-gray-500 bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="px-6 py-4 font-medium">Tenant</th>
-              <th className="px-6 py-4 font-medium">Method</th>
-              <th className="px-6 py-4 font-medium">Date</th>
-              <th className="px-6 py-4 font-medium text-right">Amount</th>
-              <th className="px-6 py-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {payments.map((payment) => (
-              <tr key={payment.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <p className="font-semibold">{payment.tenantName}</p>
-                  <p className="text-xs text-gray-500">Room {payment.room}</p>
-                </td>
-                <td className="px-6 py-4 text-gray-600">{payment.method}</td>
-                <td className="px-6 py-4 text-gray-600">{payment.date}</td>
-                <td className="px-6 py-4 text-right font-semibold text-green-600">+₹{payment.amount.toLocaleString('en-IN')}</td>
-                <td className="px-6 py-4 text-right flex justify-end gap-2">
-                  <button onClick={() => { setEditingPayment(payment); setIsModalOpen(true); }} className="text-gray-400 hover:text-[#C9973A]"><Edit2 size={16} /></button>
-                  <button onClick={() => handleDelete(payment.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">{editingPayment ? "Edit Payment" : "Record Payment"}</h3>
-              <button onClick={() => setIsModalOpen(false)}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleSave} className="space-y-4">
-              <input name="tenantName" defaultValue={editingPayment?.tenantName} placeholder="Tenant Name" className="w-full p-2 border rounded" required />
-              <input name="room" defaultValue={editingPayment?.room} placeholder="Room Number" className="w-full p-2 border rounded" required />
-              <input type="number" name="amount" defaultValue={editingPayment?.amount} placeholder="Amount" className="w-full p-2 border rounded" required />
-              <input type="date" name="date" defaultValue={editingPayment?.date} className="w-full p-2 border rounded" required />
-              <select name="method" defaultValue={editingPayment?.method} className="w-full p-2 border rounded">
-                <option value="UPI">UPI</option>
-                <option value="Cash">Cash</option>
-                <option value="Bank Transfer">Bank Transfer</option>
-              </select>
-              <input name="referenceId" defaultValue={editingPayment?.referenceId} placeholder="Ref ID / UTR" className="w-full p-2 border rounded" />
-              <button type="submit" className="w-full bg-[#1A2744] text-white py-2 rounded-lg font-bold">Save Payment</button>
-            </form>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+            <AlertCircle className="text-red-600" size={24} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Total Pending Dues</div>
+            <div className="text-2xl font-bold text-red-600 mt-1">{INR(totalDues)}</div>
           </div>
         </div>
-      )}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center">
+            <Receipt className="text-amber-600" size={24} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Unpaid Invoices</div>
+            <div className="text-2xl font-bold text-gray-800 mt-1">{pendingBills.length}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div className="relative max-w-md">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input 
+            type="text" 
+            placeholder="Search pending bills by tenant or month..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex-1 overflow-hidden flex flex-col">
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-sm text-left whitespace-nowrap">
+            <thead className="text-xs text-gray-500 bg-gray-50 border-b border-gray-200 uppercase tracking-wider sticky top-0 z-10">
+              <tr>
+                <th className="px-6 py-4">Tenant</th>
+                <th className="px-6 py-4">Month</th>
+                <th className="px-6 py-4 text-right">Total Bill</th>
+                <th className="px-6 py-4 text-right">Balance Due</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredBills.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <CheckCircle2 size={40} className="mx-auto mb-3 text-green-400" />
+                    <p className="font-bold text-gray-700 text-lg">All caught up!</p>
+                    <p className="text-sm text-gray-500 mt-1">There are no pending dues right now.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredBills.map((bill) => (
+                  <tr key={bill.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-navy">{bill.tenantName}</td>
+                    <td className="px-6 py-4 flex items-center gap-2 text-gray-600 font-medium">
+                      <Calendar size={14} className="text-gray-400"/> {bill.month}
+                    </td>
+                    <td className="px-6 py-4 text-right font-medium text-gray-700">{INR(bill.totalAmount)}</td>
+                    <td className="px-6 py-4 text-right font-bold text-red-600">{INR(bill.balance)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        bill.status === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {bill.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => setPaymentModalBill(bill)}
+                        className="text-xs font-semibold bg-navy text-white px-3 py-2 rounded-md hover:bg-navy/90 transition-colors"
+                      >
+                        Record Payment
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MODALS */}
+      {showGenerateModal && <GenerateBillsModal onClose={() => setShowGenerateModal(false)} />}
+      {paymentModalBill && <RecordPaymentModal bill={paymentModalBill} onClose={() => setPaymentModalBill(null)} />}
+    </div>
+  );
+}
+
+// ─── MODAL COMPONENTS (Keep these in the same file) ───
+
+function GenerateBillsModal({ onClose }: { onClose: () => void }) {
+  const [month, setMonth] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!month) return;
+    setIsGenerating(true);
+    try {
+      await paymentService.generateMonthlyBills(month);
+      onClose();
+    } catch (error) {
+      alert("Failed to generate bills.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-navy flex items-center gap-2">
+            <FileText size={20} className="text-gold" /> Generate Bills
+          </h2>
+          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-gray-700" /></button>
+        </div>
+        <form onSubmit={handleGenerate} className="p-6 space-y-6">
+          <p className="text-sm text-gray-500">Creates rent invoices for all active tenants for the selected month.</p>
+          <input 
+            type="month" required value={month} onChange={(e) => setMonth(e.target.value)} disabled={isGenerating} 
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none" 
+          />
+          <button type="submit" disabled={!month || isGenerating} className="w-full py-2.5 bg-navy text-white rounded-lg font-semibold flex justify-center items-center gap-2">
+            {isGenerating ? <Loader2 size={16} className="animate-spin" /> : "Generate Now"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function RecordPaymentModal({ bill, onClose }: { bill: Bill, onClose: () => void }) {
+  const [amount, setAmount] = useState(bill.balance.toString());
+  const [mode, setMode] = useState<"cash" | "upi" | "bank_transfer">("upi");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await paymentService.recordPayment({
+        tenantId: bill.tenantId, tenantName: bill.tenantName, billId: bill.id,
+        buildingId: bill.buildingId, month: bill.month, amount: parseFloat(amount),
+        paymentDate: Timestamp.now(), paymentMode: mode, recordedBy: "Admin",
+      });
+      onClose();
+    } catch (error) {
+      alert("Failed to record payment.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-bold text-navy flex items-center gap-2"><IndianRupee size={20} className="text-gold" /> Record Payment</h2>
+            <p className="text-sm text-gray-600 mt-1">{bill.tenantName} • {bill.month}</p>
+          </div>
+          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-gray-700" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="flex justify-between items-center bg-red-50 p-3 rounded-lg border border-red-100 mb-4">
+            <span className="text-xs font-semibold text-red-600 uppercase">Balance Due:</span>
+            <span className="text-lg font-bold text-red-600">{INR(bill.balance)}</span>
+          </div>
+          <input 
+            type="number" required max={bill.balance} value={amount} onChange={(e) => setAmount(e.target.value)} 
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none" 
+            placeholder="Amount"
+          />
+          <select value={mode} onChange={(e) => setMode(e.target.value as any)} className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-gold focus:outline-none">
+            <option value="upi">UPI</option>
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+          </select>
+          <button type="submit" disabled={isSaving} className="w-full py-2.5 bg-green-600 text-white rounded-lg font-semibold flex justify-center items-center gap-2 mt-4">
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : "Confirm Payment"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
