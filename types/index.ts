@@ -56,6 +56,7 @@ export interface Bed {
 export interface Tenant {
   id: string;
   name: string;
+  email?: string;
   phone: string;
   dob: string;
   gender: "Male" | "Female" | "Other";
