@@ -27,7 +27,8 @@ export interface Room {
   bedsTotal: number;    
   pricePerBed: number;
   ac: boolean;
-  attachedBath: boolean; // <-- Fixes the line 347 error
+  attachedBath: boolean;
+  meterNumber?: string; // <-- Fixes the line 352 error
 }
 
 export interface Bed {
