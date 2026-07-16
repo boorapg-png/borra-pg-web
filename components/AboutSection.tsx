@@ -17,7 +17,7 @@ export default function AboutSection() {
           <div className="w-full md:w-1/2 relative h-[400px]">
             {/* TODO: Replace with real interior image */}
             <Image 
-              src="https://images.unsplash.com/photo-1502672260266-1c1e52409818?q=80&w=2000&auto=format&fit=crop" 
+              src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2000&auto=format&fit=crop" 
               alt="Boora PG Interior" 
               fill
               className="object-cover rounded-xl shadow-xl"
