@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
-import { sendWelcomeEmail } from '@/lib/mailer';
+// FIX: Using exact relative paths instead of the @ alias
+import { adminAuth } from '../../../../lib/firebase-admin';
+import { sendWelcomeEmail } from '../../../../lib/mailer';
 import crypto from 'crypto';
 
 export async function POST(req: Request) {
