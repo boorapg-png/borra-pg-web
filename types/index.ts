@@ -25,7 +25,6 @@ export interface Room {
   buildingId: string;
   roomNumber: string; 
   number: string;     
-  // --- UPDATED ROOM TYPES ---
   type: "Single" | "Double" | "Triple" | "4-Seater" | "5-Seater" | "6-Seater"; 
   capacity: number;
   status: "available" | "occupied" | "maintenance" | "partial";
@@ -73,7 +72,7 @@ export interface Tenant {
     roomId: string;
     bedId: string;
     roomNumber: string;
-    bedLabel: string;     
+    bedLabel: string;    
     buildingName: string; 
   };
   createdAt: Timestamp;
@@ -157,7 +156,6 @@ export interface ElectricityReading {
   month: string; 
   isBilled: boolean;
   recordedBy: string;
-  // <--- Added tenantSplits to fix the build error!
   tenantSplits?: {
     tenantId: string;
     amount: number;

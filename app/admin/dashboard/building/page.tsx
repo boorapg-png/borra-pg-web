@@ -26,8 +26,6 @@ type ModalState =
   | { type: "view-room"; room: Room }
   | null;
 
-// FIX: Added roomNumber, capacity, and bedsTotal to perfectly match the service!
-// FIX: Appended new room capacities
 export interface RoomPayload {
   buildingId: string;
   floorId: string;
@@ -36,7 +34,7 @@ export interface RoomPayload {
   capacity: number;
   bedsTotal: number;
   meterNumber: string;
-  type: Room["type"]; // Automatically syncs with types/index.ts!
+  type: Room["type"];
   pricePerBed: number;
   status: Room["status"];
   ac: boolean;
@@ -45,7 +43,6 @@ export interface RoomPayload {
 
 const INR = (n: number) => "₹" + n.toLocaleString("en-IN");
 
-// FIX: Expanded logic to map all 6 types to their numeric bed capacity
 const bedCount = (type: Room["type"]) => {
   switch (type) {
     case "Single": return 1;
@@ -57,9 +54,6 @@ const bedCount = (type: Room["type"]) => {
     default: return 1;
   }
 };
-
-const INR = (n: number) => "₹" + n.toLocaleString("en-IN");
-const bedCount = (type: "Single" | "Double" | "Triple") => type === "Single" ? 1 : type === "Double" ? 2 : 3;
 
 // ─── ROOT COMPONENT
 export default function BuildingManagement() {
@@ -283,7 +277,11 @@ export default function BuildingManagement() {
                   </div>
                 ) : (
                   floors.map((floor) => {
-                    const floorRooms = rooms.filter((r) => r.floorId === floor.id);
+                    // FIX: Automatically sorts rooms alphanumerically
+                    const floorRooms = rooms
+                      .filter((r) => r.floorId === floor.id)
+                      .sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' }));
+                    
                     const isCollapsed = collapsedFloors.has(floor.id);
                     const isFloorConfirmingDelete = confirmDelete === `floor-${floor.id}`;
 
@@ -657,7 +655,7 @@ function FloorForm({ initialData, isSaving, onSave, onCancel }: { initialData?: 
 function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel }: { initialData?: Room, buildingId: string, floorId: string, isSaving: boolean, onSave: (data: RoomPayload) => void, onCancel: () => void }) {
   const [number, setNumber] = useState(initialData?.number || "");
   const [meterNumber, setMeterNumber] = useState(initialData?.meterNumber || "");
-  const [type, setType] = useState<"Single" | "Double" | "Triple">(initialData?.type || "Single");
+  const [type, setType] = useState<Room["type"]>(initialData?.type || "Single");
   const [pricePerBed, setPricePerBed] = useState<string>(initialData?.pricePerBed?.toString() || "");
   const [status, setStatus] = useState<Room["status"]>(initialData?.status || "available");
   const [ac, setAc] = useState(initialData?.ac || false);
@@ -666,7 +664,6 @@ function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel
   const priceNum = parseFloat(pricePerBed) || 0;
   const isComplete = number.trim() !== "" && priceNum > 0;
 
-  // FIX: Form correctly compiles roomNumber, capacity, and bedsTotal automatically!
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isComplete) {
@@ -675,7 +672,7 @@ function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel
         buildingId, 
         floorId, 
         number: number.trim(), 
-        roomNumber: number.trim(), // Assuming roomNumber equals number
+        roomNumber: number.trim(),
         capacity: beds,
         bedsTotal: beds,
         meterNumber: meterNumber.trim(), 
@@ -702,15 +699,20 @@ function RoomForm({ initialData, buildingId, floorId, isSaving, onSave, onCancel
       </div>
 
       <div>
-        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Room Type</label>
-        <div className="grid grid-cols-3 gap-2">
-          {(["Single", "Double", "Triple"] as const).map(t => (
-            <button key={t} type="button" disabled={isSaving} onClick={() => setType(t)} className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors disabled:opacity-50 ${type === t ? "bg-navy border-navy text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
-              <span className="font-semibold text-sm">{t}</span>
-              <span className={`text-[10px] mt-0.5 ${type === t ? "text-gray-300" : "text-gray-400"}`}>{bedCount(t)} bed{bedCount(t) > 1 && "s"}</span>
-            </button>
-          ))}
-        </div>
+        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Room Type (Capacity)</label>
+        <select 
+          value={type} 
+          onChange={(e) => setType(e.target.value as Room["type"])} 
+          disabled={isSaving} 
+          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none transition-colors bg-white disabled:bg-gray-50"
+        >
+          <option value="Single">Single (1 Bed)</option>
+          <option value="Double">Double (2 Beds)</option>
+          <option value="Triple">Triple (3 Beds)</option>
+          <option value="4-Seater">4-Seater (4 Beds)</option>
+          <option value="5-Seater">5-Seater (5 Beds)</option>
+          <option value="6-Seater">6-Seater (6 Beds)</option>
+        </select>
       </div>
 
       <div>
