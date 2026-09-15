@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { 
   Users, Plus, Search, Edit2, Trash2, X, ChevronDown, ChevronUp, 
-  CheckCircle2, AlertCircle, Loader2, Home
+  CheckCircle2, AlertCircle, Loader2, Home, Key
 } from "lucide-react";
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -45,6 +45,7 @@ export default function TenantManagement() {
   
   const [modal, setModal] = useState<{ type: "add" | "edit"; tenant?: Tenant } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
   // ─── SEARCH & SORT LOGIC ───
   const filteredAndSortedTenants = useMemo(() => {
@@ -110,6 +111,32 @@ export default function TenantManagement() {
     } catch (error) {
       console.error("Error deleting tenant:", error);
       alert("Failed to delete tenant.");
+    }
+  };
+
+  const handleResetPassword = async (t: Tenant) => {
+    if (!t.authUid || !t.email) return;
+    if (!confirm(`Are you sure you want to generate a new password and email it to ${t.name}?`)) return;
+    
+    setResettingId(t.id);
+    try {
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: t.email, name: t.name, uid: t.authUid })
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Success! A new password was sent to ${t.email}`);
+      } else {
+        alert(data.error || "Failed to reset password.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred while resetting the password.");
+    } finally {
+      setResettingId(null);
     }
   };
 
@@ -189,6 +216,7 @@ export default function TenantManagement() {
                   <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-navy">{t.name}</div>
+                      <div className="text-gray-500 text-xs mt-0.5">{t.email}</div>
                       <div className="text-gray-500 text-xs mt-0.5">{t.phone}</div>
                     </td>
                     <td className="px-6 py-4">
@@ -236,6 +264,16 @@ export default function TenantManagement() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {t.authUid && (
+                          <button 
+                            onClick={() => handleResetPassword(t)} 
+                            disabled={resettingId === t.id}
+                            title="Reset Portal Password"
+                            className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+                          >
+                            {resettingId === t.id ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                          </button>
+                        )}
                         <button onClick={() => setModal({ type: "edit", tenant: t })} className="p-1.5 text-gray-400 hover:text-navy hover:bg-gray-100 rounded transition-colors">
                           <Edit2 size={16} />
                         </button>
@@ -296,6 +334,7 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
   // Form State
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
+    email: initialData?.email || "",
     phone: initialData?.phone || "",
     dob: initialData?.dob || "",
     gender: initialData?.gender || "Male",
@@ -310,6 +349,9 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
     roomId: initialData?.accommodation.roomId || "",
     bedId: initialData?.accommodation.bedId || ""
   });
+
+  // Toggle for sending credentials
+  const [createAccount, setCreateAccount] = useState(!initialData?.authUid);
 
   // Dynamic Room/Bed Fetching
   const { rooms } = useRooms(formData.buildingId || null);
@@ -356,8 +398,30 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
         return;
       }
 
+      let finalAuthUid = initialData?.authUid;
+
+      // TRIGGER BACKEND API TO CREATE ACCOUNT & SEND EMAIL
+      if (createAccount && formData.email && !finalAuthUid) {
+        const res = await fetch('/api/admin/create-tenant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email.trim(), name: formData.name.trim() })
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          alert(data.error || "Failed to create portal account. Check if email already exists.");
+          setIsSaving(false);
+          return;
+        }
+        // Save the generated Firebase Auth UID
+        finalAuthUid = data.uid;
+      }
+
       const tenantPayload = {
         name: formData.name.trim(),
+        email: formData.email.trim(),
+        authUid: finalAuthUid || null, // Connects the auth profile
         phone: formData.phone.trim(),
         dob: formData.dob,
         gender: formData.gender as "Male" | "Female" | "Other",
@@ -380,6 +444,7 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
       };
 
       if (initialData) {
+        // Use the existing tenant ID to update
         await tenantService.update(initialData.id, tenantPayload);
       } else {
         await tenantService.add(tenantPayload);
@@ -404,6 +469,10 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
           <div>
             <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Full Name</label>
             <input required name="name" value={formData.name} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Email Address</label>
+            <input required type="email" name="email" value={formData.email} onChange={handleChange} placeholder="tenant@example.com" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none" />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Phone Number</label>
@@ -470,7 +539,7 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
         </div>
       </section>
 
-      {/* 3. Admin Checklists */}
+      {/* 3. Admin Checklists & Portal Account */}
       <section className="bg-gray-50 p-4 rounded-xl border border-gray-200">
         <h3 className="text-sm font-bold text-navy mb-4 flex items-center gap-2">
           <CheckCircle2 size={16} className="text-gold" /> Admin Checklists
@@ -492,13 +561,31 @@ function TenantForm({ initialData, onSuccess, onCancel }: { initialData?: Tenant
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Tenant Account</label>
+            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Tenant Status</label>
             <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold focus:outline-none bg-white">
               <option value="active">Active (Staying)</option>
               <option value="inactive">Inactive (Vacated)</option>
             </select>
           </div>
         </div>
+
+        {/* Create Account Toggle */}
+        {!initialData?.authUid && (
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={createAccount} 
+                onChange={(e) => setCreateAccount(e.target.checked)} 
+                className="w-5 h-5 text-gold border-gray-300 rounded focus:ring-gold focus:ring-2"
+              />
+              <div>
+                <div className="text-sm font-bold text-navy">Create Tenant Portal Account & Send Welcome Email</div>
+                <div className="text-xs text-gray-500">This will generate a password and send it to the tenant's email address.</div>
+              </div>
+            </label>
+          </div>
+        )}
       </section>
 
       {/* Buttons */}

@@ -50,10 +50,13 @@ export interface Bed {
 
 // ─── TENANT TYPES ───
 
+// ─── TENANT TYPES ───
+
 export interface Tenant {
   id: string;
   name: string;
-  email?: string;
+  email: string; // <-- Changed to required
+  authUid?: string; // <-- Added to link Firebase Auth
   phone: string;
   dob: string;
   gender: "Male" | "Female" | "Other";
