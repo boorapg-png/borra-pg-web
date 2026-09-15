@@ -25,7 +25,8 @@ export interface Room {
   buildingId: string;
   roomNumber: string; 
   number: string;     
-  type: "Single" | "Double" | "Triple"; 
+  // --- UPDATED ROOM TYPES ---
+  type: "Single" | "Double" | "Triple" | "4-Seater" | "5-Seater" | "6-Seater"; 
   capacity: number;
   status: "available" | "occupied" | "maintenance" | "partial";
   bedsTotal: number;    

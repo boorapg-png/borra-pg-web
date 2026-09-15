@@ -27,6 +27,7 @@ type ModalState =
   | null;
 
 // FIX: Added roomNumber, capacity, and bedsTotal to perfectly match the service!
+// FIX: Appended new room capacities
 export interface RoomPayload {
   buildingId: string;
   floorId: string;
@@ -35,12 +36,27 @@ export interface RoomPayload {
   capacity: number;
   bedsTotal: number;
   meterNumber: string;
-  type: "Single" | "Double" | "Triple";
+  type: Room["type"]; // Automatically syncs with types/index.ts!
   pricePerBed: number;
   status: Room["status"];
   ac: boolean;
   attachedBath: boolean;
 }
+
+const INR = (n: number) => "₹" + n.toLocaleString("en-IN");
+
+// FIX: Expanded logic to map all 6 types to their numeric bed capacity
+const bedCount = (type: Room["type"]) => {
+  switch (type) {
+    case "Single": return 1;
+    case "Double": return 2;
+    case "Triple": return 3;
+    case "4-Seater": return 4;
+    case "5-Seater": return 5;
+    case "6-Seater": return 6;
+    default: return 1;
+  }
+};
 
 const INR = (n: number) => "₹" + n.toLocaleString("en-IN");
 const bedCount = (type: "Single" | "Double" | "Triple") => type === "Single" ? 1 : type === "Double" ? 2 : 3;
