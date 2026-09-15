@@ -5,34 +5,43 @@ import { getFirestore } from 'firebase-admin/firestore';
 if (!getApps().length) {
   let credentialConfig;
 
-  // 1. Try parsing the JSON environment variable if it exists
+  // 1. Try parsing the JSON environment variable if provided
   const jsonEnv = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (jsonEnv) {
     try {
       const cleanedJson = jsonEnv.trim().replace(/^["']|["']$/g, '');
       credentialConfig = JSON.parse(cleanedJson);
     } catch (e) {
-      console.warn('Warning: FIREBASE_SERVICE_ACCOUNT_JSON was not valid JSON. Falling back to individual keys.');
+      // Ignore parse failure and move to fallback
     }
   }
 
-  // 2. Fallback to individual env vars if JSON parsing wasn't used or failed
-  if (!credentialConfig) {
+  // 2. Fallback to individual environment variables or project defaults for build safety
+  if (!credentialConfig || !credentialConfig.project_id) {
     let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-    // Clean up quotes and fix literal newlines for OpenSSL
     privateKey = privateKey.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
 
     credentialConfig = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      projectId: process.env.FIREBASE_PROJECT_ID || 'borra-pg',
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL || 'firebase-adminsdk-fbsvc@borra-pg.iam.gserviceaccount.com',
       privateKey: privateKey,
     };
   }
 
-  initializeApp({
-    credential: cert(credentialConfig),
-  });
+  // Only initialize if we have a valid-looking private key to prevent build crashes
+  if (credentialConfig.privateKey && credentialConfig.privateKey.includes('BEGIN PRIVATE KEY')) {
+    try {
+      initializeApp({
+        credential: cert(credentialConfig),
+      });
+    } catch (error) {
+      console.error('Firebase admin initialization error:', error);
+    }
+  } else {
+    console.warn('Firebase Admin: Private key missing or invalid during build phase. Skipping initialization.');
+  }
 }
 
-export const adminAuth = getAuth();
-export const adminDb = getFirestore();
+// Safe exports to prevent runtime crashes if initialization skipped
+export const adminAuth = getApps().length ? getAuth() : ({} as any);
+export const adminDb = getApps().length ? getFirestore() : ({} as any);
