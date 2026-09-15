@@ -56,7 +56,7 @@ export interface Tenant {
   id: string;
   name: string;
   email: string; // <-- Changed to required
-  authUid?: string; // <-- Added to link Firebase Auth
+  authUid?: string | null; // <-- Added to link Firebase Auth
   phone: string;
   dob: string;
   gender: "Male" | "Female" | "Other";
