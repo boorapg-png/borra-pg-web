@@ -2,46 +2,45 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-if (!getApps().length) {
-  let credentialConfig;
-
-  // 1. Try parsing the JSON environment variable if provided
-  const jsonEnv = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (jsonEnv) {
-    try {
-      const cleanedJson = jsonEnv.trim().replace(/^["']|["']$/g, '');
-      credentialConfig = JSON.parse(cleanedJson);
-    } catch (e) {
-      // Ignore parse failure and move to fallback
-    }
+function getFirebaseAdminApp() {
+  if (getApps().length > 0) {
+    return getApps()[0];
   }
 
-  // 2. Fallback to individual environment variables or project defaults for build safety
-  if (!credentialConfig || !credentialConfig.project_id) {
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-    privateKey = privateKey.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
-
-    credentialConfig = {
-      projectId: process.env.FIREBASE_PROJECT_ID || 'borra-pg',
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL || 'firebase-adminsdk-fbsvc@borra-pg.iam.gserviceaccount.com',
-      privateKey: privateKey,
-    };
-  }
-
-  // Only initialize if we have a valid-looking private key to prevent build crashes
-  if (credentialConfig.privateKey && credentialConfig.privateKey.includes('BEGIN PRIVATE KEY')) {
-    try {
-      initializeApp({
-        credential: cert(credentialConfig),
-      });
-    } catch (error) {
-      console.error('Firebase admin initialization error:', error);
+  try {
+    let credentialConfig;
+    const jsonEnv = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    
+    if (jsonEnv) {
+      try {
+        const cleanedJson = jsonEnv.trim().replace(/^["']|["']$/g, '');
+        credentialConfig = JSON.parse(cleanedJson);
+      } catch (e) {
+        console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON, falling back to individual keys.');
+      }
     }
-  } else {
-    console.warn('Firebase Admin: Private key missing or invalid during build phase. Skipping initialization.');
+
+    if (!credentialConfig || !credentialConfig.project_id) {
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+      privateKey = privateKey.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+
+      credentialConfig = {
+        projectId: process.env.FIREBASE_PROJECT_ID || 'borra-pg',
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
+        privateKey: privateKey,
+      };
+    }
+
+    return initializeApp({
+      credential: cert(credentialConfig),
+    });
+  } catch (error) {
+    console.error('CRITICAL: Firebase Admin initialization failed:', error);
+    throw error;
   }
 }
 
-// Safe exports to prevent runtime crashes if initialization skipped
-export const adminAuth = getApps().length ? getAuth() : ({} as any);
-export const adminDb = getApps().length ? getFirestore() : ({} as any);
+const app = getFirebaseAdminApp();
+
+export const adminAuth = getAuth(app);
+export const adminDb = getFirestore(app);
