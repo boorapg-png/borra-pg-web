@@ -1,8 +1,8 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-function getFirebaseAdmin() {
+function getFirebaseAdmin(): App | null {
   if (getApps().length > 0) {
     return getApps()[0];
   }
@@ -11,26 +11,25 @@ function getFirebaseAdmin() {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
   const projectId = process.env.FIREBASE_PROJECT_ID;
 
-  // If credentials are completely missing during the build phase, skip gracefully
   if (!jsonEnv && (!privateKey || !projectId)) {
     console.warn('Firebase Admin credentials missing during build. Skipping initialization.');
     return null;
   }
 
   try {
-    let credentialConfig;
+    let credentialConfig: Record<string, string> | undefined;
     
     if (jsonEnv) {
       try {
         const cleanedJson = jsonEnv.trim().replace(/^["']|["']$/g, '');
         credentialConfig = JSON.parse(cleanedJson);
-      } catch (e) {
+      } catch {
         console.warn('Could not parse FIREBASE_SERVICE_ACCOUNT_JSON, falling back to individual keys.');
       }
     }
 
     if (!credentialConfig || !credentialConfig.project_id) {
-      let pk = (privateKey || '').trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+      const pk = (privateKey || '').trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
       credentialConfig = {
         projectId: projectId || 'borra-pg',
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
@@ -38,7 +37,6 @@ function getFirebaseAdmin() {
       };
     }
 
-    // Ensure we actually have a private key before initializing
     if (!credentialConfig.privateKey || !credentialConfig.privateKey.includes('BEGIN PRIVATE KEY')) {
       console.warn('Valid private key not found. Skipping Firebase Admin initialization.');
       return null;
@@ -55,6 +53,5 @@ function getFirebaseAdmin() {
 
 const app = getFirebaseAdmin();
 
-// Safe exports that won't crash your build if initialization is deferred
-export const adminAuth = app ? getAuth(app) : ({} as any);
-export const adminDb = app ? getFirestore(app) : ({} as any);
+export const adminAuth = app ? getAuth(app) : ({} as ReturnType<typeof getAuth>);
+export const adminDb = app ? getFirestore(app) : ({} as ReturnType<typeof getFirestore>);
